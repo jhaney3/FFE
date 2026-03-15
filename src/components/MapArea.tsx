@@ -149,8 +149,8 @@ export default function MapArea() {
   const activePlan = floorPlans.find(fp => fp.id === activePlanId);
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800">
-      <div className="min-h-[4rem] py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 flex flex-wrap gap-4 items-center justify-between px-6 shrink-0 shadow-sm z-10">
+    <div className="flex-1 flex flex-col h-full bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 min-w-0">
+      <div className="min-h-[4rem] py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 flex flex-wrap gap-4 items-center justify-between px-6 shrink-0 shadow-sm z-10 w-full min-w-0">
         <div className="flex flex-wrap gap-2 items-center">
           {floorPlans.map(plan => (
             <button

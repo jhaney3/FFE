@@ -36,10 +36,11 @@ export default function FormModal({ photo, room, onClose }: { photo: any, room: 
 
   useEffect(() => {
     fetchTypes();
-    // Auto focus the type input when modal opens
-    setTimeout(() => {
-      if (typeInputRef.current) typeInputRef.current.focus();
-    }, 300);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (typeInputRef.current) typeInputRef.current.focus();
+      });
+    });
   }, []);
 
   useEffect(() => {
@@ -83,17 +84,28 @@ export default function FormModal({ photo, room, onClose }: { photo: any, room: 
     }
   };
 
+  const commitTag = (value: string, keepOpen: boolean) => {
+    const cleanTag = value.trim();
+    if (cleanTag && !selectedTags.includes(cleanTag)) {
+      setSelectedTags(prev => [...prev, cleanTag]);
+    }
+    setNewTagInput('');
+    if (keepOpen) {
+      // Keep the input mounted and focused so the user can type the next tag
+      newTagInputRef.current?.focus();
+    } else {
+      setIsAddingTag(false);
+    }
+  };
+
   const handleAddNewTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' || e.key === 'Tab') {
       e.preventDefault();
-      if (newTagInput.trim()) {
-        const cleanTag = newTagInput.trim();
-        if (!selectedTags.includes(cleanTag)) {
-          setSelectedTags(prev => [...prev, cleanTag]);
-        }
-        setNewTagInput('');
-        setIsAddingTag(false);
-      }
+      if (newTagInput.trim()) commitTag(newTagInput, false);
+      else setIsAddingTag(false);
+    } else if (e.key === ',') {
+      e.preventDefault();
+      if (newTagInput.trim()) commitTag(newTagInput, true);
     } else if (e.key === 'Escape') {
       setIsAddingTag(false);
       setNewTagInput('');
@@ -273,7 +285,7 @@ export default function FormModal({ photo, room, onClose }: { photo: any, room: 
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex-1 flex flex-col space-y-6">
+          <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} className="flex-1 flex flex-col space-y-6">
             
             {/* Type Autocomplete */}
             <div className="relative">
@@ -288,9 +300,13 @@ export default function FormModal({ photo, room, onClose }: { photo: any, room: 
                   }}
                   onKeyDown={handleTypeKeyDown}
                   onFocus={() => setIsTypeDropdownOpen(true)}
-                  onBlur={() => setTimeout(() => setIsTypeDropdownOpen(false), 200)}
+                  onBlur={(e) => {
+                    // If focus escapes to nowhere (body), reclaim it immediately.
+                    // This is a safety net for any remaining post-drag async races.
+                    if (!e.relatedTarget) typeInputRef.current?.focus();
+                    setTimeout(() => setIsTypeDropdownOpen(false), 200);
+                  }}
                   placeholder="e.g. Chair, Desk, Monitor" 
-                  autoFocus 
                   required
                   className="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-950 bg-gray-50 shadow-sm focus:border-blue-500 focus:ring-blue-500/50 px-4 py-2.5 border outline-none transition-all pr-10" 
                 />

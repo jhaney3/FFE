@@ -32,9 +32,13 @@ export default function Home() {
   const handleDragEnd = (event: any) => {
     setActivePhoto(null);
     const { over, active } = event;
-    
+
     if (over && active) {
-      setModalState({ photo: active.data.current?.photo, room: over.data.current?.room });
+      const photo = active.data.current?.photo;
+      const room = over.data.current?.room;
+      // Delay one task so dnd-kit's post-drag async cleanup (focus restoration,
+      // accessibility announcements) fully completes before the modal opens.
+      setTimeout(() => setModalState({ photo, room }), 50);
     }
   };
 
@@ -61,12 +65,13 @@ export default function Home() {
          </div>
       </div>
       
-      <main className="flex-1 w-full bg-white dark:bg-gray-950 relative flex min-h-0">
+      <main className="flex-1 w-full bg-white dark:bg-gray-950 relative flex min-h-0 min-w-0">
         {activeTab === 'map' ? (
-          <DndContext 
+          <DndContext
             sensors={sensors}
-            onDragStart={handleDragStart} 
+            onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
+            accessibility={{ restoreFocus: false }}
           >
             <Sidebar />
             <MapArea />
