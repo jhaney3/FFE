@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import PhotoUploader from './PhotoUploader';
 import { useDraggable } from '@dnd-kit/core';
-import { Trash2 } from 'lucide-react';
+import { ChevronLeft, Trash2 } from 'lucide-react';
 
 function DraggableThumbnail({ photo, onDelete }: { photo: any, onDelete: (id: string) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -49,6 +49,7 @@ function DraggableThumbnail({ photo, onDelete }: { photo: any, onDelete: (id: st
 
 export default function Sidebar() {
   const [photos, setPhotos] = useState<any[]>([]);
+  const [isOpen, setIsOpen] = useState(true);
 
   const fetchPhotos = async () => {
     const { data, error } = await supabase
@@ -110,25 +111,46 @@ export default function Sidebar() {
   }, []);
 
   return (
-    <div className="w-80 bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 flex flex-col h-full overflow-hidden shrink-0 z-10 shadow-lg">
-      <div className="p-4 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950">
-        <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 tracking-tight">Incoming Triage</h2>
-        <p className="text-sm text-gray-500 mt-1">Drag and drop unassigned photos to specific rooms on the floor plan.</p>
-      </div>
-      
-      <PhotoUploader />
-
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900/20 custom-scrollbar min-h-0">
-        {photos.map((photo) => (
-          <DraggableThumbnail key={photo.id} photo={photo} onDelete={deletePhoto} />
-        ))}
-        {photos.length === 0 && (
-          <div className="flex flex-col items-center justify-center text-gray-400 text-sm h-32 space-y-2">
-            <span className="text-2xl">📸</span>
-            <p>Queue is empty.</p>
+    <div className="relative h-full flex shrink-0 z-10">
+      {/* Sliding content panel */}
+      <div
+        style={{ width: isOpen ? 320 : 0, transition: 'width 0.25s ease-in-out' }}
+        className="overflow-hidden h-full"
+      >
+        <div className="w-80 h-full bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 flex flex-col shadow-lg">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 tracking-tight">Incoming Triage</h2>
+            <p className="text-sm text-gray-500 mt-1">Drag and drop unassigned photos to specific rooms on the floor plan.</p>
           </div>
-        )}
+
+          <PhotoUploader />
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900/20 custom-scrollbar min-h-0">
+            {photos.map((photo) => (
+              <DraggableThumbnail key={photo.id} photo={photo} onDelete={deletePhoto} />
+            ))}
+            {photos.length === 0 && (
+              <div className="flex flex-col items-center justify-center text-gray-400 text-sm h-32 space-y-2">
+                <span className="text-2xl">📸</span>
+                <p>Queue is empty.</p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Toggle tab — always visible on the right edge */}
+      <button
+        onClick={() => setIsOpen(o => !o)}
+        title={isOpen ? 'Hide triage panel' : 'Show triage panel'}
+        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full w-5 h-14 bg-white dark:bg-gray-900 border border-l-0 border-gray-200 dark:border-gray-700 rounded-r-lg flex items-center justify-center shadow-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+      >
+        <ChevronLeft
+          size={14}
+          className="text-gray-400"
+          style={{ transition: 'transform 0.25s ease-in-out', transform: isOpen ? 'rotate(0deg)' : 'rotate(180deg)' }}
+        />
+      </button>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import RoomZone from '@/components/RoomZone';
 import PdfUploader from './PdfUploader';
 import NewZoneModal from './NewZoneModal';
-import { Layers, ShieldAlert, Trash2, ChevronLeft, ChevronRight, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
+import { Layers, ShieldAlert, Trash2, ChevronLeft, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
@@ -17,6 +17,7 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
   const [rooms, setRooms] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [isAdminMode, setIsAdminMode] = useState(false);
+  const [controlsOpen, setControlsOpen] = useState(false);
   const [pendingZoneParams, setPendingZoneParams] = useState<{x: number, y: number, width: number, height: number} | null>(null);
   
   // PDF state
@@ -154,46 +155,52 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
 
   return (
     <div className="flex-1 flex flex-col h-full bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 min-w-0">
-      <div className="min-h-[4rem] py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 flex flex-wrap gap-4 items-center justify-between px-6 shrink-0 shadow-sm z-10 w-full min-w-0">
-        <div className="flex flex-wrap gap-2 items-center">
-          {floorPlans.map(plan => (
-            <button
-              key={plan.id}
-              onClick={() => setActivePlanId(plan.id)}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                activePlanId === plan.id 
-                  ? 'bg-blue-50 text-blue-600 border border-blue-200 shadow-sm dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/50' 
-                  : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
-              }`}
-            >
-              {plan.name}
-            </button>
-          ))}
-          <PdfUploader onUploaded={fetchFloorPlans} />
+      {/* Collapsible floor plan controls */}
+      <div className="shrink-0 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 shadow-sm z-10 w-full">
+        <div
+          style={{ maxHeight: controlsOpen ? '80px' : '0px', transition: 'max-height 0.2s ease-in-out' }}
+          className="overflow-hidden"
+        >
+          <div className="py-3 px-6 flex flex-wrap gap-2 items-center justify-between w-full">
+            <div className="flex flex-wrap gap-2 items-center">
+              {floorPlans.map(plan => (
+                <button
+                  key={plan.id}
+                  onClick={() => setActivePlanId(plan.id)}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    activePlanId === plan.id
+                      ? 'bg-blue-50 text-blue-600 border border-blue-200 shadow-sm dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/50'
+                      : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  {plan.name}
+                </button>
+              ))}
+              <PdfUploader onUploaded={fetchFloorPlans} />
+            </div>
+            {activePlan && (
+              <button
+                onClick={deleteActivePlan}
+                title="Delete Floor Plan"
+                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+              >
+                <Trash2 size={16} />
+              </button>
+            )}
+          </div>
         </div>
-        
-        <div className="flex items-center space-x-3">
-          {activePlan && (
-            <button
-              onClick={deleteActivePlan}
-              title="Delete Floor Plan"
-              className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
-            >
-              <Trash2 size={18} />
-            </button>
-          )}
 
-          <button
-            onClick={() => setIsAdminMode(!isAdminMode)}
-            className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-              isAdminMode ? 'bg-indigo-100 text-indigo-700 border border-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-300 dark:border-indigo-800' : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
-            }`}
-          >
-            <ShieldAlert size={16} />
-            <span>Admin Mode</span>
-            {isAdminMode && <span className="flex h-2 w-2 rounded-full bg-indigo-500 animate-pulse ml-2" />}
-          </button>
-        </div>
+        {/* Toggle strip */}
+        <button
+          onClick={() => setControlsOpen(o => !o)}
+          className="w-full flex items-center justify-center gap-1 py-0.5 text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+        >
+          <ChevronDown
+            size={12}
+            style={{ transition: 'transform 0.2s ease-in-out', transform: controlsOpen ? 'rotate(0deg)' : 'rotate(180deg)' }}
+          />
+          <span>{controlsOpen ? 'Hide floor plans' : 'Floor plans'}</span>
+        </button>
       </div>
 
       <div className="flex-1 overflow-hidden bg-gray-100 dark:bg-gray-950 flex flex-col items-center justify-center pattern-dots relative">
@@ -208,15 +215,31 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
           >
             {({ zoomIn, zoomOut, resetTransform }) => (
               <>
+                {/* Zoom controls */}
                 <div className="absolute top-6 right-6 flex flex-col gap-2 z-20 bg-white/90 dark:bg-black/90 p-1.5 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 backdrop-blur-md">
                   <button onClick={() => zoomIn()} className="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"><ZoomIn size={20}/></button>
                   <button onClick={() => zoomOut()} className="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"><ZoomOut size={20}/></button>
                   <button onClick={() => resetTransform()} className="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"><Maximize size={20}/></button>
                 </div>
 
+                {/* Admin mode — floating bottom-left */}
+                <button
+                  onClick={() => setIsAdminMode(m => !m)}
+                  className={`absolute bottom-6 left-6 z-20 flex items-center gap-2 px-3.5 py-2 rounded-full shadow-lg backdrop-blur-md text-sm font-semibold border transition-all ${
+                    isAdminMode
+                      ? 'bg-indigo-600 text-white border-indigo-500 shadow-indigo-500/40'
+                      : 'bg-white/90 dark:bg-black/90 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-800 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400'
+                  }`}
+                >
+                  <ShieldAlert size={15} />
+                  <span>Admin</span>
+                  {isAdminMode && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+                </button>
+
+                {/* Page switcher — bottom-center */}
                 {numPages > 1 && (
                   <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 z-20 bg-white/90 dark:bg-black/90 px-4 py-2 rounded-full shadow-lg border border-gray-200 dark:border-gray-800 backdrop-blur-md">
-                    <button 
+                    <button
                       disabled={pageNumber <= 1}
                       onClick={() => setPageNumber(prev => prev - 1)}
                       className="p-1 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
@@ -224,7 +247,7 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
                       <ChevronLeft size={20}/>
                     </button>
                     <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Page {pageNumber} of {numPages}</span>
-                    <button 
+                    <button
                       disabled={pageNumber >= numPages}
                       onClick={() => setPageNumber(prev => prev + 1)}
                       className="p-1 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
