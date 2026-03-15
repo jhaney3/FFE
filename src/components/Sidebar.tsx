@@ -68,19 +68,38 @@ export default function Sidebar() {
 
   useEffect(() => {
     fetchPhotos();
-    
-    // Set up realtime subscription for new incoming photos
+
     const channel = supabase
-      .channel('schema-db-changes')
+      .channel('incoming-photos-changes')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'IncomingPhotos'
-        },
-        () => {
-          fetchPhotos();
+        { event: 'INSERT', schema: 'public', table: 'IncomingPhotos' },
+        (payload) => {
+          const photo = payload.new as any;
+          if (photo.status === 'pending') {
+            setPhotos(prev => [photo, ...prev]);
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'IncomingPhotos' },
+        (payload) => {
+          const photo = payload.new as any;
+          if (photo.status === 'pending') {
+            // Restore to triage (e.g. item deleted from a zone)
+            setPhotos(prev => prev.find(p => p.id === photo.id) ? prev : [photo, ...prev]);
+          } else {
+            // Processed/removed — drop from triage list
+            setPhotos(prev => prev.filter(p => p.id !== photo.id));
+          }
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'IncomingPhotos' },
+        (payload) => {
+          setPhotos(prev => prev.filter(p => p.id !== payload.old.id));
         }
       )
       .subscribe();
