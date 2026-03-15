@@ -11,7 +11,7 @@ import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
-export default function MapArea() {
+export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
   const [floorPlans, setFloorPlans] = useState<any[]>([]);
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
   const [rooms, setRooms] = useState<any[]>([]);
@@ -36,6 +36,10 @@ export default function MapArea() {
     setPageNumber(1);
     if (activePlanId) fetchRooms(activePlanId);
   }, [activePlanId]);
+
+  useEffect(() => {
+    if (activePlanId && itemsVersion) fetchRooms(activePlanId);
+  }, [itemsVersion]);
 
   const fetchFloorPlans = async () => {
     const { data } = await supabase.from('FloorPlans').select('*').order('created_at');

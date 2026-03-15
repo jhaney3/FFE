@@ -16,6 +16,7 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState<'map' | 'list'>('map');
   const [activePhoto, setActivePhoto] = useState<any>(null);
   const [modalState, setModalState] = useState<{ photo: any, room: any } | null>(null);
+  const [itemsVersion, setItemsVersion] = useState(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -74,7 +75,7 @@ export default function Home() {
             accessibility={{ restoreFocus: false }}
           >
             <Sidebar />
-            <MapArea />
+            <MapArea itemsVersion={itemsVersion} />
             
             <DragOverlay dropAnimation={null}>
               {activePhoto ? (
@@ -94,10 +95,11 @@ export default function Home() {
       </main>
 
       {modalState && (
-        <FormModal 
-          photo={modalState.photo} 
-          room={modalState.room} 
-          onClose={() => setModalState(null)} 
+        <FormModal
+          photo={modalState.photo}
+          room={modalState.room}
+          onClose={() => setModalState(null)}
+          onSaved={() => setItemsVersion(v => v + 1)}
         />
       )}
     </div>

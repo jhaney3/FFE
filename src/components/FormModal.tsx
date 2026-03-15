@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { X, Check, Tag, ChevronDown, SplitSquareVertical, Info } from 'lucide-react';
 
-export default function FormModal({ photo, room, onClose }: { photo: any, room: any, onClose: () => void }) {
+export default function FormModal({ photo, room, onClose, onSaved }: { photo: any, room: any, onClose: () => void, onSaved?: () => void }) {
   const [loading, setLoading] = useState(false);
 
   // Auto-complete Types state
@@ -244,6 +244,7 @@ export default function FormModal({ photo, room, onClose }: { photo: any, room: 
         .eq('id', photo.id);
       if (photoError) throw photoError;
 
+      onSaved?.();
       onClose();
     } catch (err: any) {
       alert(err.message);
