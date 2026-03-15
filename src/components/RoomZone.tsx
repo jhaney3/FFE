@@ -20,6 +20,8 @@ export default function RoomZone({ room, items = [], activeAdmin, onDeleteZone, 
   const svgLineRef = useRef<SVGLineElement | null>(null);
   const drag = useRef({ active: false, startX: 0, startY: 0, startLeft: 0, startTop: 0 });
   const pos = useRef({ left: 0, top: 0 }); // current screen-space position of popout
+  const size = useRef({ width: 288, height: 0 }); // 0 = measure from natural height on open
+  const resizeDrag = useRef({ active: false, startX: 0, startY: 0, startW: 0, startH: 0 });
 
   const { isOver, setNodeRef } = useDroppable({ id: room.id, data: { type: 'room', room } });
 
@@ -40,23 +42,40 @@ export default function RoomZone({ room, items = [], activeAdmin, onDeleteZone, 
     svgLineRef.current.setAttribute('y2', String(pr.top));
   };
 
-  // Draw line after portal mounts into the DOM
+  // Measure natural height after portal mounts, then pin it so resize works predictably
   useEffect(() => {
-    if (isOpen) requestAnimationFrame(updateLine);
+    if (!isOpen) return;
+    requestAnimationFrame(() => {
+      if (popoutRef.current && size.current.height === 0) {
+        const h = popoutRef.current.offsetHeight;
+        size.current.height = h;
+        popoutRef.current.style.height = `${h}px`;
+      }
+    });
   }, [isOpen]);
 
-  // Also redraw on every render (handles PDF pan/zoom shifting the zone)
+  // RAF loop: redraws the line every frame while the popout is open.
+  // This keeps the zone-end of the line in sync during PDF pan/zoom,
+  // which moves the pill via CSS transform without any React re-renders.
   useEffect(() => {
-    if (isOpen) updateLine();
-  });
+    if (!isOpen) return;
+    let rafId: number;
+    const loop = () => {
+      updateLine();
+      rafId = requestAnimationFrame(loop);
+    };
+    rafId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafId);
+  }, [isOpen]);
 
   const openPopout = () => {
     if (!zoneRef.current) return;
     const rect = zoneRef.current.getBoundingClientRect();
     pos.current = {
-      left: Math.max(8, rect.left + rect.width / 2 - 144), // center the 288px wide popout
+      left: Math.max(8, rect.left + rect.width / 2 - 144),
       top: Math.min(window.innerHeight - 100, rect.bottom + 12),
     };
+    size.current = { width: 288, height: 0 }; // reset so natural height is re-measured on mount
     setIsOpen(true);
   };
 
@@ -89,6 +108,36 @@ export default function RoomZone({ room, items = [], activeAdmin, onDeleteZone, 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (!drag.current.active) return;
     drag.current.active = false;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  };
+
+  // --- Resize handlers ---
+
+  const handleResizeDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    if (!popoutRef.current) return;
+    resizeDrag.current = {
+      active: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      startW: size.current.width,
+      startH: size.current.height || popoutRef.current.offsetHeight,
+    };
+    e.currentTarget.setPointerCapture(e.pointerId);
+  };
+
+  const handleResizeMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!resizeDrag.current.active || !popoutRef.current) return;
+    const width  = Math.max(220, resizeDrag.current.startW + (e.clientX - resizeDrag.current.startX));
+    const height = Math.max(150, resizeDrag.current.startH + (e.clientY - resizeDrag.current.startY));
+    size.current = { width, height };
+    popoutRef.current.style.width  = `${width}px`;
+    popoutRef.current.style.height = `${height}px`;
+  };
+
+  const handleResizeUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!resizeDrag.current.active) return;
+    resizeDrag.current.active = false;
     e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
@@ -156,6 +205,17 @@ export default function RoomZone({ room, items = [], activeAdmin, onDeleteZone, 
       */}
       {isOpen && !activeAdmin && createPortal(
         <>
+          {/* Container query rules — scoped to .ffe-popout */}
+          <style>{`
+            .ffe-popout  { container-type: inline-size; }
+            .ffe-attr    { display: none; }
+            .ffe-notes   { display: none; }
+            @container (min-width: 340px) {
+              .ffe-attr  { display: inline-block; }
+              .ffe-notes { display: block; }
+            }
+          `}</style>
+
           {/* Full-viewport SVG for the connector line */}
           <svg
             style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 9998 }}
@@ -172,11 +232,11 @@ export default function RoomZone({ room, items = [], activeAdmin, onDeleteZone, 
           {/* Floating popout table */}
           <div
             ref={popoutRef}
-            style={{ position: 'fixed', left: pos.current.left, top: pos.current.top, width: 288, zIndex: 9999 }}
-            className="bg-black/85 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col select-none"
+            style={{ position: 'fixed', left: pos.current.left, top: pos.current.top, width: size.current.width, zIndex: 9999 }}
+            className="ffe-popout bg-black/85 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col select-none overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Drag handle — pointer events only here, content scrolls normally */}
+            {/* Drag handle */}
             <div
               className="w-full flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing shrink-0 group/handle touch-none"
               onPointerDown={handlePointerDown}
@@ -187,9 +247,10 @@ export default function RoomZone({ room, items = [], activeAdmin, onDeleteZone, 
               <div className="w-12 h-1.5 bg-white/20 group-hover/handle:bg-white/40 rounded-full transition-colors" />
             </div>
 
-            <div className="px-4 pb-4 space-y-3">
+            {/* Scrollable content — flex-1 so it fills user-resized height */}
+            <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4 gap-3 min-h-0">
               {/* Header */}
-              <div className="flex items-start justify-between border-b border-white/10 pb-2">
+              <div className="flex items-start justify-between border-b border-white/10 pb-2 shrink-0">
                 <div className="flex-1 pr-2">
                   <h3 className="text-white font-semibold text-sm flex items-center gap-1.5 break-words leading-tight">
                     <Tag size={14} className="text-indigo-400 shrink-0" /> {room.name}
@@ -206,24 +267,67 @@ export default function RoomZone({ room, items = [], activeAdmin, onDeleteZone, 
                 )}
               </div>
 
-              {/* Items list */}
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+              {/* Items list — grows to fill available height */}
+              <div className="flex-1 space-y-2 overflow-y-auto pr-1 min-h-0">
                 {items.length > 0 ? items.map(item => (
-                  <div key={item.id} className="group/item flex items-center gap-3 p-2 rounded-lg bg-white/5 border border-white/5 relative">
+                  <div key={item.id} className="group/item flex items-center gap-2.5 p-2 rounded-lg bg-white/5 border border-white/5 relative">
+                    {/* Photo */}
                     {item.photo_url ? (
                       <img src={item.photo_url} alt={item.ItemTypes?.name || 'Item'} className="w-10 h-10 rounded-md object-cover bg-gray-800 shrink-0" />
                     ) : (
                       <div className="w-10 h-10 rounded-md bg-gray-800 flex items-center justify-center text-gray-500 shrink-0"><Package size={16} /></div>
                     )}
-                    <div className="flex-1 min-w-0 pr-14">
-                      <p className="text-sm font-medium text-gray-200 truncate">{item.ItemTypes?.name}</p>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {item.qty_excellent > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400 shrink-0">{item.qty_excellent} Exc</span>}
-                        {item.qty_good > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-400 shrink-0">{item.qty_good} Good</span>}
-                        {item.qty_fair > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 shrink-0">{item.qty_fair} Fair</span>}
-                        {item.qty_poor > 0 && <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-400 shrink-0">{item.qty_poor} Poor</span>}
+
+                    {/* Text content */}
+                    <div className="flex-1 min-w-0 pr-12">
+                      {/* Name */}
+                      <p className="text-[13px] font-semibold text-gray-100 truncate leading-tight">{item.ItemTypes?.name}</p>
+
+                      {/* Quality dots + inline attributes — always one line, never wraps */}
+                      <div className="flex items-center gap-2 mt-1 overflow-hidden">
+                        {item.qty_excellent > 0 && (
+                          <span className="flex items-center gap-1 shrink-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-green-400" />
+                            <span className="text-[11px] font-bold text-green-400">{item.qty_excellent}</span>
+                            <span className="text-[10px] text-green-400/60">Exc</span>
+                          </span>
+                        )}
+                        {item.qty_good > 0 && (
+                          <span className="flex items-center gap-1 shrink-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                            <span className="text-[11px] font-bold text-blue-400">{item.qty_good}</span>
+                            <span className="text-[10px] text-blue-400/60">Good</span>
+                          </span>
+                        )}
+                        {item.qty_fair > 0 && (
+                          <span className="flex items-center gap-1 shrink-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                            <span className="text-[11px] font-bold text-yellow-400">{item.qty_fair}</span>
+                            <span className="text-[10px] text-yellow-400/60">Fair</span>
+                          </span>
+                        )}
+                        {item.qty_poor > 0 && (
+                          <span className="flex items-center gap-1 shrink-0">
+                            <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+                            <span className="text-[11px] font-bold text-red-400">{item.qty_poor}</span>
+                            <span className="text-[10px] text-red-400/60">Poor</span>
+                          </span>
+                        )}
+                        {/* Divider + attributes revealed inline at 340px+ */}
+                        {item.attributes?.length > 0 && (
+                          <span className="ffe-attr w-px h-3 bg-white/15 shrink-0 mx-0.5" />
+                        )}
+                        {item.attributes?.map((tag: string) => (
+                          <span key={tag} className="ffe-attr text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-300/90 shrink-0 leading-none">{tag}</span>
+                        ))}
                       </div>
+
+                      {/* Notes — revealed at 340px+, always truncated to one line */}
+                      {item.notes && (
+                        <p className="ffe-notes text-[10px] text-gray-500 mt-0.5 truncate italic leading-tight">{item.notes}</p>
+                      )}
                     </div>
+
                     {/* Actions — only visible on row hover */}
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
                       <button
@@ -249,6 +353,19 @@ export default function RoomZone({ room, items = [], activeAdmin, onDeleteZone, 
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Resize handle — bottom-right corner */}
+            <div
+              className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize touch-none group/resize"
+              onPointerDown={handleResizeDown}
+              onPointerMove={handleResizeMove}
+              onPointerUp={handleResizeUp}
+              onPointerCancel={handleResizeUp}
+            >
+              <svg width="10" height="10" viewBox="0 0 10 10" className="absolute bottom-1.5 right-1.5 text-white/20 group-hover/resize:text-white/50 transition-colors">
+                <path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              </svg>
             </div>
           </div>
         </>,
