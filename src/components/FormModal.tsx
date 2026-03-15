@@ -39,7 +39,7 @@ export default function FormModal({ photo, room, onClose }: { photo: any, room: 
     // Auto focus the type input when modal opens
     setTimeout(() => {
       if (typeInputRef.current) typeInputRef.current.focus();
-    }, 100);
+    }, 300);
   }, []);
 
   useEffect(() => {

@@ -150,8 +150,8 @@ export default function MapArea() {
 
   return (
     <div className="flex-1 flex flex-col h-full bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800">
-      <div className="h-16 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 flex items-center justify-between px-6 shrink-0 shadow-sm z-10">
-        <div className="flex space-x-2 items-center">
+      <div className="min-h-[4rem] py-3 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 flex flex-wrap gap-4 items-center justify-between px-6 shrink-0 shadow-sm z-10">
+        <div className="flex flex-wrap gap-2 items-center">
           {floorPlans.map(plan => (
             <button
               key={plan.id}
@@ -192,7 +192,7 @@ export default function MapArea() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto bg-gray-100 dark:bg-gray-950 flex flex-col items-center justify-center pattern-dots relative">
+      <div className="flex-1 overflow-hidden bg-gray-100 dark:bg-gray-950 flex flex-col items-center justify-center pattern-dots relative">
         {activePlan ? (
           <TransformWrapper
             initialScale={1}
@@ -272,6 +272,7 @@ export default function MapArea() {
                         items={items.filter(i => i.room_id === room.id)} 
                         activeAdmin={isAdminMode} 
                         onDeleteZone={handleDeleteZone}
+                        onItemDeleted={() => fetchRooms(activePlanId!)}
                       />
                     ))}
 
