@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { X, Building2, Layers, Tag, Type } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 interface NewZoneModalProps {
   onSuggestName?: string;
@@ -10,8 +11,8 @@ interface NewZoneModalProps {
   pageNumber: number;
 }
 
-const ROOM_TYPES = [
-  'Classroom', 'Kitchen', 'Storage Closet', 'Office', 'Bathroom', 'Hallway', 'Sanctuary', 'Lobby', 'Other'
+const BASE_ROOM_TYPES = [
+  'Classroom', 'Kitchen', 'Storage Closet', 'Office', 'Bathroom', 'Hallway', 'Sanctuary', 'Lobby',
 ];
 
 export default function NewZoneModal({ onSave, onCancel, pageNumber }: NewZoneModalProps) {
@@ -19,17 +20,43 @@ export default function NewZoneModal({ onSave, onCancel, pageNumber }: NewZoneMo
   const [levelName, setLevelName] = useState('');
   const [buildingName, setBuildingName] = useState('');
   const [roomType, setRoomType] = useState('Classroom');
+  const [customTypeInput, setCustomTypeInput] = useState('');
+  const [dbRoomTypes, setDbRoomTypes] = useState<string[]>([]);
+  const customInputRef = useRef<HTMLInputElement>(null);
+
+  // Fetch distinct room_type values already in the DB and merge with base list
+  useEffect(() => {
+    const fetchRoomTypes = async () => {
+      const { data } = await supabase.from('Rooms').select('room_type');
+      if (data) {
+        const distinct = Array.from(new Set(
+          data.map((r: any) => r.room_type).filter(Boolean)
+        )) as string[];
+        // Only keep ones not already in the base list
+        setDbRoomTypes(distinct.filter(t => !BASE_ROOM_TYPES.includes(t)));
+      }
+    };
+    fetchRoomTypes();
+  }, []);
+
+  useEffect(() => {
+    if (roomType === 'Other') customInputRef.current?.focus();
+  }, [roomType]);
+
+  const allRoomTypes = [...BASE_ROOM_TYPES, ...dbRoomTypes, 'Other'];
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    onSave({
-      name,
-      page_number: pageNumber,
-      level_name: levelName,
-      building_name: buildingName,
-      room_type: roomType
-    });
+
+    let finalRoomType = roomType;
+    if (roomType === 'Other') {
+      const trimmed = customTypeInput.trim();
+      if (!trimmed) return;
+      finalRoomType = trimmed;
+    }
+
+    onSave({ name, page_number: pageNumber, level_name: levelName, building_name: buildingName, room_type: finalRoomType });
   };
 
   return (
@@ -96,13 +123,24 @@ export default function NewZoneModal({ onSave, onCancel, pageNumber }: NewZoneMo
               </label>
               <select
                 value={roomType}
-                onChange={(e) => setRoomType(e.target.value)}
+                onChange={(e) => { setRoomType(e.target.value); setCustomTypeInput(''); }}
                 className="w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-xl focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all appearance-none"
               >
-                {ROOM_TYPES.map(type => (
+                {allRoomTypes.map(type => (
                   <option key={type} value={type}>{type}</option>
                 ))}
               </select>
+              {roomType === 'Other' && (
+                <input
+                  ref={customInputRef}
+                  type="text"
+                  required
+                  placeholder="Describe the room type..."
+                  value={customTypeInput}
+                  onChange={(e) => setCustomTypeInput(e.target.value)}
+                  className="mt-2 w-full px-4 py-2.5 bg-gray-50 dark:bg-gray-950 border border-indigo-300 dark:border-indigo-700 rounded-xl focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none transition-all placeholder:text-gray-400"
+                />
+              )}
             </div>
           </div>
 
@@ -116,7 +154,7 @@ export default function NewZoneModal({ onSave, onCancel, pageNumber }: NewZoneMo
             </button>
             <button
               type="submit"
-              disabled={!name.trim()}
+              disabled={!name.trim() || (roomType === 'Other' && !customTypeInput.trim())}
               className="px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:hover:bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/30 transition-all"
             >
               Save Zone
