@@ -26,6 +26,17 @@ export default function Home() {
     })
   );
 
+  // Centers the DragOverlay on the cursor instead of anchoring to the draggable element's top-left
+  const snapCenterToCursor = ({ transform, draggingNodeRect, activatorEvent }: any) => {
+    if (!draggingNodeRect || !activatorEvent) return transform;
+    const overlayHalf = 20; // half of the 40px (w-10) overlay
+    return {
+      ...transform,
+      x: transform.x + activatorEvent.clientX - draggingNodeRect.left - overlayHalf,
+      y: transform.y + activatorEvent.clientY - draggingNodeRect.top - overlayHalf,
+    };
+  };
+
   const handleDragStart = (event: any) => {
     setActivePhoto(event.active.data.current?.photo);
   };
@@ -73,13 +84,14 @@ export default function Home() {
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
             accessibility={{ restoreFocus: false }}
+            modifiers={[snapCenterToCursor]}
           >
             <Sidebar />
             <MapArea itemsVersion={itemsVersion} />
             
             <DragOverlay dropAnimation={null}>
               {activePhoto ? (
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-white shadow-2xl cursor-grabbing ring-2 ring-blue-500 transition-transform origin-center flex items-center justify-center relative translate-x-2 -translate-y-2 pointer-events-none">
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-white shadow-2xl cursor-grabbing ring-2 ring-blue-500 flex items-center justify-center relative pointer-events-none">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={activePhoto.photo_url} alt="Dragging item" className="w-full h-full object-cover opacity-60" />
                   <div className="absolute inset-0 flex items-center justify-center bg-blue-500/30">

@@ -111,12 +111,12 @@ export default function Sidebar() {
   }, []);
 
   return (
-    <div
-      className="relative h-full shrink-0 z-10"
-      style={{ width: isOpen ? 320 : 0, transition: 'width 0.25s ease-in-out' }}
-    >
-      {/* Sliding content panel — absolute so it doesn't affect outer width calc */}
-      <div className="absolute inset-0 overflow-hidden">
+    <div className="h-full shrink-0 relative z-10">
+      {/* Collapsing content panel — width drives the flex layout size */}
+      <div
+        style={{ width: isOpen ? 320 : 0, transition: 'width 0.25s ease-in-out' }}
+        className="h-full overflow-hidden"
+      >
         <div className="w-80 h-full bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 flex flex-col shadow-lg">
           <div className="p-4 border-b border-gray-200 dark:border-gray-800">
             <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 tracking-tight">Incoming Triage</h2>
@@ -139,11 +139,12 @@ export default function Sidebar() {
         </div>
       </div>
 
-      {/* Toggle tab — always visible on the right edge */}
+      {/* Toggle tab — absolutely positioned, tracks sidebar width via `left` */}
       <button
         onClick={() => setIsOpen(o => !o)}
         title={isOpen ? 'Hide triage panel' : 'Show triage panel'}
-        className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-full w-5 h-14 bg-white dark:bg-gray-900 border border-l-0 border-gray-200 dark:border-gray-700 rounded-r-lg flex items-center justify-center shadow-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        style={{ left: isOpen ? 320 : 0, transition: 'left 0.25s ease-in-out' }}
+        className="absolute top-1/2 -translate-y-1/2 w-5 h-14 bg-white dark:bg-gray-900 border border-l-0 border-gray-200 dark:border-gray-700 rounded-r-lg flex items-center justify-center shadow-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
       >
         <ChevronLeft
           size={14}
