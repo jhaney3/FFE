@@ -111,12 +111,12 @@ export default function Sidebar() {
   }, []);
 
   return (
-    <div className="relative h-full flex shrink-0 z-10">
-      {/* Sliding content panel */}
-      <div
-        style={{ width: isOpen ? 320 : 0, transition: 'width 0.25s ease-in-out' }}
-        className="overflow-hidden h-full"
-      >
+    <div
+      className="relative h-full shrink-0 z-10"
+      style={{ width: isOpen ? 320 : 0, transition: 'width 0.25s ease-in-out' }}
+    >
+      {/* Sliding content panel — absolute so it doesn't affect outer width calc */}
+      <div className="absolute inset-0 overflow-hidden">
         <div className="w-80 h-full bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 flex flex-col shadow-lg">
           <div className="p-4 border-b border-gray-200 dark:border-gray-800">
             <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 tracking-tight">Incoming Triage</h2>
