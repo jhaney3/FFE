@@ -204,21 +204,21 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
               <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Level</label>
-              <select value={levelFilter} onChange={(e) => { setLevelFilter(e.target.value); setBuildingFilter(''); setRoomTypeFilter(''); setRoomFilter(''); }} className={selectClass}>
+              <select value={levelFilter} onChange={(e) => { setLevelFilter(e.target.value); setBuildingFilter(''); setRoomTypeFilter(''); setAttributeFilter(''); }} className={selectClass}>
                 <option value="">All Levels</option>
                 {uniqueLevels.map(l => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Building</label>
-              <select value={buildingFilter} onChange={(e) => { setBuildingFilter(e.target.value); setRoomTypeFilter(''); setRoomFilter(''); }} className={selectClass}>
+              <select value={buildingFilter} onChange={(e) => { setBuildingFilter(e.target.value); setRoomTypeFilter(''); setAttributeFilter(''); }} className={selectClass}>
                 <option value="">All Buildings</option>
                 {uniqueBuildings.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
             <div>
               <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Room Type</label>
-              <select value={roomTypeFilter} onChange={(e) => { setRoomTypeFilter(e.target.value); setRoomFilter(''); }} className={selectClass}>
+              <select value={roomTypeFilter} onChange={(e) => { setRoomTypeFilter(e.target.value); setAttributeFilter(''); }} className={selectClass}>
                 <option value="">All Types</option>
                 {uniqueRoomTypes.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
