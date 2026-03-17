@@ -129,14 +129,23 @@ export default function EditItemModal({ item, onClose, onSaved }: {
     }
   };
 
+  const toTitleCase = (str: string) => str.replace(/\b\w/g, c => c.toUpperCase());
+
   const handleTypeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Tab' && filteredTypes.length > 0) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      setTypeSearch(toTitleCase(typeSearch));
+      setIsTypeDropdownOpen(false);
+      typeInputRef.current?.blur();
+    } else if (e.key === 'Tab' && filteredTypes.length > 0) {
       const exactMatch = filteredTypes.find(t => t.name.toLowerCase() === typeSearch.toLowerCase());
       if (!exactMatch) {
         e.preventDefault();
         setTypeSearch(filteredTypes[0].name);
         setIsTypeDropdownOpen(false);
       }
+    } else if (e.key === 'Escape') {
+      setIsTypeDropdownOpen(false);
     }
   };
 
@@ -180,7 +189,7 @@ export default function EditItemModal({ item, onClose, onSaved }: {
     setLoading(true);
     try {
       // 1. Resolve ItemType
-      const typeName = typeSearch.trim();
+      const typeName = toTitleCase(typeSearch.trim());
       let itemTypeId: string;
 
       const { data: existingType } = await supabase
@@ -307,7 +316,7 @@ export default function EditItemModal({ item, onClose, onSaved }: {
                   }}
                   onKeyDown={handleTypeKeyDown}
                   onFocus={() => setIsTypeDropdownOpen(true)}
-                  onBlur={() => setTimeout(() => setIsTypeDropdownOpen(false), 200)}
+                  onBlur={() => setTimeout(() => setIsTypeDropdownOpen(false), 150)}
                   placeholder="e.g. Chair, Desk, Monitor"
                   required
                   className="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-950 bg-gray-50 shadow-sm focus:border-blue-500 focus:ring-blue-500/50 px-4 py-2.5 border outline-none transition-all pr-10"
@@ -315,15 +324,15 @@ export default function EditItemModal({ item, onClose, onSaved }: {
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
               </div>
 
-              {isTypeDropdownOpen && typeSearch && (
-                <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto">
+              {isTypeDropdownOpen && (
+                <div className="absolute z-20 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto top-full mt-1">
                   {filteredTypes.length > 0 ? (
                     filteredTypes.map(t => (
                       <button
                         key={t.id}
                         type="button"
                         className="w-full text-left px-4 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-700 dark:text-gray-200 text-sm transition-colors"
-                        onClick={() => {
+                        onMouseDown={() => {
                           setTypeSearch(t.name);
                           setIsTypeDropdownOpen(false);
                         }}
@@ -331,11 +340,11 @@ export default function EditItemModal({ item, onClose, onSaved }: {
                         {t.name}
                       </button>
                     ))
-                  ) : (
+                  ) : typeSearch ? (
                     <div className="px-4 py-2 text-sm text-gray-500 italic">
                       Create new type: <span className="font-semibold text-blue-600 dark:text-blue-400">"{typeSearch}"</span>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               )}
             </div>

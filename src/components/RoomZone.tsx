@@ -147,11 +147,24 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
   const openPopout = () => {
     if (!zoneRef.current) return;
     const rect = zoneRef.current.getBoundingClientRect();
-    pos.current = {
-      left: Math.max(8, rect.left + rect.width / 2 - 144),
-      top:  Math.min(window.innerHeight - 100, rect.bottom + 12),
-    };
-    size.current = { width: 288, height: 0 };
+    const popoutW    = size.current.width || 288;
+    const estimatedH = size.current.height || 320;
+
+    const left = Math.min(
+      Math.max(8, rect.left + rect.width / 2 - popoutW / 2),
+      window.innerWidth - popoutW - 8
+    );
+
+    const spaceBelow = window.innerHeight - rect.bottom - 12;
+    const spaceAbove = rect.top - 12;
+    const flipUp = spaceBelow < estimatedH && spaceAbove > spaceBelow;
+
+    const top = flipUp
+      ? Math.max(8, rect.top - estimatedH - 12)
+      : rect.bottom + 12;
+
+    pos.current = { left, top };
+    size.current = { width: popoutW, height: 0 };
     setIsOpen(true);
   };
 
