@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Sidebar from '@/components/Sidebar';
 
@@ -9,14 +9,29 @@ const MapArea = dynamic(() => import('@/components/MapArea'), {
 });
 import Dashboard from '@/components/Dashboard';
 import FormModal from '@/components/FormModal';
+import AssetDropModal from '@/components/AssetDropModal';
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
-import { LayoutGrid, Map as MapIcon, Database } from 'lucide-react';
+import { LayoutGrid, Map as MapIcon, Database, LogOut } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import type { User } from '@supabase/supabase-js';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<'map' | 'list'>('map');
   const [activePhoto, setActivePhoto] = useState<any>(null);
+  const [activeAsset, setActiveAsset] = useState<any>(null);
   const [modalState, setModalState] = useState<{ photo: any, room: any } | null>(null);
+  const [assetDropState, setAssetDropState] = useState<{ asset: any, room: any } | null>(null);
   const [itemsVersion, setItemsVersion] = useState(0);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/login';
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -38,19 +53,28 @@ export default function Home() {
   };
 
   const handleDragStart = (event: any) => {
-    setActivePhoto(event.active.data.current?.photo);
+    const data = event.active.data.current;
+    if (data?.type === 'asset') {
+      setActiveAsset(data.asset);
+    } else {
+      setActivePhoto(data?.photo);
+    }
   };
 
   const handleDragEnd = (event: any) => {
     setActivePhoto(null);
+    setActiveAsset(null);
     const { over, active } = event;
 
     if (over && active) {
-      const photo = active.data.current?.photo;
+      const data = active.data.current;
       const room = over.data.current?.room;
-      // Delay one task so dnd-kit's post-drag async cleanup (focus restoration,
-      // accessibility announcements) fully completes before the modal opens.
-      setTimeout(() => setModalState({ photo, room }), 50);
+      if (data?.type === 'asset') {
+        setTimeout(() => setAssetDropState({ asset: data.asset, room }), 50);
+      } else {
+        const photo = data?.photo;
+        setTimeout(() => setModalState({ photo, room }), 50);
+      }
     }
   };
 
@@ -75,8 +99,24 @@ export default function Home() {
              <LayoutGrid size={16}/> <span className="hidden sm:inline">List View</span>
            </button>
          </div>
+         <div className="flex items-center gap-3">
+           {user?.user_metadata?.avatar_url && (
+             // eslint-disable-next-line @next/next/no-img-element
+             <img src={user.user_metadata.avatar_url} alt={user.user_metadata?.full_name} className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700" />
+           )}
+           {user && (
+             <span className="text-sm text-gray-600 dark:text-gray-400 hidden md:inline">{user.user_metadata?.full_name || user.email}</span>
+           )}
+           <button
+             onClick={handleSignOut}
+             title="Sign out"
+             className="text-gray-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
+           >
+             <LogOut size={16} />
+           </button>
+         </div>
       </div>
-      
+
       <main className="flex-1 w-full bg-white dark:bg-gray-950 relative flex min-h-0 min-w-0">
         {activeTab === 'map' ? (
           <DndContext
@@ -95,8 +135,19 @@ export default function Home() {
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={activePhoto.photo_url} alt="Dragging item" className="w-full h-full object-cover opacity-60" />
                   <div className="absolute inset-0 flex items-center justify-center bg-blue-500/30">
-                     <span className="text-white drop-shadow-md"><LayoutGrid size={14} /></span>
+                    <span className="text-white drop-shadow-md"><LayoutGrid size={14} /></span>
                   </div>
+                </div>
+              ) : activeAsset ? (
+                <div className="w-14 h-14 rounded-xl overflow-hidden bg-white shadow-2xl cursor-grabbing ring-2 ring-amber-400 pointer-events-none">
+                  {activeAsset.photo_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={activeAsset.photo_url} alt={activeAsset.name} className="w-full h-full object-cover opacity-80" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-amber-50">
+                      <LayoutGrid size={18} className="text-amber-400" />
+                    </div>
+                  )}
                 </div>
               ) : null}
             </DragOverlay>
@@ -111,6 +162,15 @@ export default function Home() {
           photo={modalState.photo}
           room={modalState.room}
           onClose={() => setModalState(null)}
+          onSaved={() => setItemsVersion(v => v + 1)}
+        />
+      )}
+
+      {assetDropState && (
+        <AssetDropModal
+          asset={assetDropState.asset}
+          room={assetDropState.room}
+          onClose={() => setAssetDropState(null)}
           onSaved={() => setItemsVersion(v => v + 1)}
         />
       )}

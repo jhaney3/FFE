@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { X, Check, Tag, ChevronDown, SplitSquareVertical, Info } from 'lucide-react';
+import { saveAssetIfNew } from '@/lib/saveAsset';
+import { X, Check, Tag, ChevronDown, SplitSquareVertical, Info, Bookmark } from 'lucide-react';
 
 export default function FormModal({ photo, room, onClose, onSaved }: { photo: any, room: any, onClose: () => void, onSaved?: () => void }) {
   const [loading, setLoading] = useState(false);
@@ -33,6 +34,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
   });
 
   const [notes, setNotes] = useState('');
+  const [saveAsAsset, setSaveAsAsset] = useState(false);
 
   useEffect(() => {
     fetchTypes();
@@ -243,6 +245,18 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
         .update({ status: 'processed' })
         .eq('id', photo.id);
       if (photoError) throw photoError;
+
+      // 5. Optionally save as a reusable asset
+      if (saveAsAsset) {
+        const result = await saveAssetIfNew({
+          name:         typeName,
+          item_type_id: itemTypeId,
+          photo_url:    photo.photo_url,
+          attributes:   selectedTags,
+          notes:        notes.trim(),
+        });
+        if (result === 'duplicate') alert(`An asset for "${typeName}" with these attributes already exists.`);
+      }
 
       onSaved?.();
       onClose();
@@ -503,9 +517,25 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
               ></textarea>
             </div>
 
-            {/* Submit */}
+            {/* Save as asset toggle */}
             <div className="pt-2 mt-auto border-t border-gray-100 dark:border-gray-800">
-              <button 
+              <button
+                type="button"
+                onClick={() => setSaveAsAsset(v => !v)}
+                className={`w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all mb-3 ${
+                  saveAsAsset
+                    ? 'bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-400'
+                    : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-900 dark:border-gray-800 dark:text-gray-400 hover:border-amber-300 hover:text-amber-600'
+                }`}
+              >
+                <Bookmark size={15} className={saveAsAsset ? 'fill-amber-500 text-amber-500' : ''} />
+                <span>{saveAsAsset ? 'Will be saved as a reusable asset' : 'Save as reusable asset'}</span>
+                <div className={`ml-auto w-8 h-4 rounded-full transition-colors relative shrink-0 ${saveAsAsset ? 'bg-amber-400' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                  <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all ${saveAsAsset ? 'left-4' : 'left-0.5'}`} />
+                </div>
+              </button>
+
+              <button
                 disabled={loading || (isSplit && currentSplitTotal !== totalQuantity)} 
                 type="submit" 
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md flex justify-center items-center gap-2 transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed group"

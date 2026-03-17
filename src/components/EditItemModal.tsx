@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabase';
-import { X, Check, Tag, ChevronDown, SplitSquareVertical, Info, Package } from 'lucide-react';
+import { saveAssetIfNew } from '@/lib/saveAsset';
+import { X, Check, Tag, ChevronDown, SplitSquareVertical, Info, Package, Bookmark } from 'lucide-react';
 
 export default function EditItemModal({ item, onClose, onSaved }: {
   item: any;
@@ -32,6 +33,7 @@ export default function EditItemModal({ item, onClose, onSaved }: {
   const [splitQty, setSplitQty] = useState({ Excellent: 0, Good: 1, Fair: 0, Poor: 0 });
 
   const [notes, setNotes] = useState(item.notes || '');
+  const [saveAsAsset, setSaveAsAsset] = useState(false);
 
   // Initialise quantity/quality state from saved item
   useEffect(() => {
@@ -218,6 +220,18 @@ export default function EditItemModal({ item, onClose, onSaved }: {
         notes: notes.trim(),
       }).eq('id', item.id);
       if (error) throw error;
+
+      // Optionally save as a reusable asset
+      if (saveAsAsset) {
+        const result = await saveAssetIfNew({
+          name:         typeName,
+          item_type_id: itemTypeId,
+          photo_url:    item.photo_url,
+          attributes:   selectedTags,
+          notes:        notes.trim(),
+        });
+        if (result === 'duplicate') alert(`An asset for "${typeName}" with these attributes already exists.`);
+      }
 
       onSaved();
       onClose();
@@ -487,8 +501,24 @@ export default function EditItemModal({ item, onClose, onSaved }: {
               />
             </div>
 
-            {/* Submit */}
+            {/* Save as asset toggle */}
             <div className="pt-2 mt-auto border-t border-gray-100 dark:border-gray-800">
+              <button
+                type="button"
+                onClick={() => setSaveAsAsset(v => !v)}
+                className={`w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all mb-3 ${
+                  saveAsAsset
+                    ? 'bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-400'
+                    : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-900 dark:border-gray-800 dark:text-gray-400 hover:border-amber-300 hover:text-amber-600'
+                }`}
+              >
+                <Bookmark size={15} className={saveAsAsset ? 'fill-amber-500 text-amber-500' : ''} />
+                <span>{saveAsAsset ? 'Will be saved as a reusable asset' : 'Save as reusable asset'}</span>
+                <div className={`ml-auto w-8 h-4 rounded-full transition-colors relative shrink-0 ${saveAsAsset ? 'bg-amber-400' : 'bg-gray-300 dark:bg-gray-700'}`}>
+                  <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all ${saveAsAsset ? 'left-4' : 'left-0.5'}`} />
+                </div>
+              </button>
+
               <button
                 disabled={loading || (isSplit && currentSplitTotal !== totalQuantity)}
                 type="submit"

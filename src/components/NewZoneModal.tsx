@@ -5,21 +5,22 @@ import { X, Building2, Layers, Tag, Type } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 interface NewZoneModalProps {
-  onSuggestName?: string;
   onSave: (data: { name: string; page_number: number; level_name: string; building_name: string; room_type: string }) => void;
   onCancel: () => void;
   pageNumber: number;
+  initialRoom?: any; // when present, modal is in edit mode
 }
 
 const BASE_ROOM_TYPES = [
   'Classroom', 'Kitchen', 'Storage Closet', 'Office', 'Bathroom', 'Hallway', 'Sanctuary', 'Lobby',
 ];
 
-export default function NewZoneModal({ onSave, onCancel, pageNumber }: NewZoneModalProps) {
-  const [name, setName] = useState('');
-  const [levelName, setLevelName] = useState('');
-  const [buildingName, setBuildingName] = useState('');
-  const [roomType, setRoomType] = useState('Classroom');
+export default function NewZoneModal({ onSave, onCancel, pageNumber, initialRoom }: NewZoneModalProps) {
+  const editing = !!initialRoom;
+  const [name, setName] = useState(initialRoom?.name || '');
+  const [levelName, setLevelName] = useState(initialRoom?.level_name || '');
+  const [buildingName, setBuildingName] = useState(initialRoom?.building_name || '');
+  const [roomType, setRoomType] = useState(initialRoom?.room_type || 'Classroom');
   const [customTypeInput, setCustomTypeInput] = useState('');
   const [dbRoomTypes, setDbRoomTypes] = useState<string[]>([]);
   const customInputRef = useRef<HTMLInputElement>(null);
@@ -65,7 +66,7 @@ export default function NewZoneModal({ onSave, onCancel, pageNumber }: NewZoneMo
         <div className="px-6 py-4 border-b border-gray-200/50 dark:border-gray-800/50 flex justify-between items-center bg-gradient-to-r from-gray-50/50 to-white/50 dark:from-gray-900/50 dark:to-gray-800/50">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
             <Tag size={20} className="text-indigo-500" />
-            Configure New Zone
+            {editing ? 'Edit Zone' : 'Configure New Zone'}
           </h2>
           <button onClick={onCancel} className="p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-gray-500 transition-colors">
             <X size={20} />
@@ -157,7 +158,7 @@ export default function NewZoneModal({ onSave, onCancel, pageNumber }: NewZoneMo
               disabled={!name.trim() || (roomType === 'Other' && !customTypeInput.trim())}
               className="px-5 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:hover:bg-indigo-600 rounded-xl shadow-lg shadow-indigo-500/30 transition-all"
             >
-              Save Zone
+              {editing ? 'Save Changes' : 'Save Zone'}
             </button>
           </div>
         </form>

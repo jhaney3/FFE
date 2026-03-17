@@ -5,7 +5,8 @@ import { supabase } from '@/lib/supabase';
 import RoomZone from '@/components/RoomZone';
 import PdfUploader from './PdfUploader';
 import NewZoneModal from './NewZoneModal';
-import { Layers, ShieldAlert, Trash2, ChevronLeft, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize } from 'lucide-react';
+import { Layers, ShieldAlert, Trash2, ChevronLeft, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize, Package } from 'lucide-react';
+import AssetSidebar from './AssetSidebar';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
@@ -19,6 +20,8 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
   const [isAdminMode, setIsAdminMode] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
   const [pendingZoneParams, setPendingZoneParams] = useState<{x: number, y: number, width: number, height: number} | null>(null);
+  const [editingRoom, setEditingRoom] = useState<any | null>(null);
+  const [assetSidebarOpen, setAssetSidebarOpen] = useState(false);
   
   // PDF state
   const [numPages, setNumPages] = useState<number>(1);
@@ -141,6 +144,24 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
     }
   };
 
+  const handleUpdateZone = async (roomId: string, coords: any) => {
+    await supabase.from('Rooms').update({ map_coordinates: coords }).eq('id', roomId);
+    setRooms(prev => prev.map(r => r.id === roomId ? { ...r, map_coordinates: coords } : r));
+  };
+
+  const handleSaveEditZone = async (data: any) => {
+    if (!editingRoom) return;
+    await supabase.from('Rooms').update({
+      name:          data.name,
+      room_type:     data.room_type,
+      building_name: data.building_name,
+      level_name:    data.level_name,
+      page_number:   data.page_number,
+    }).eq('id', editingRoom.id);
+    setEditingRoom(null);
+    fetchRooms(activePlanId!);
+  };
+
   const handleDeleteZone = async (roomId: string) => {
     if (!confirm('Are you sure you want to delete this zone and ALL items inside it? This cannot be undone.')) return;
     const { error } = await supabase.from('Rooms').delete().eq('id', roomId);
@@ -210,7 +231,7 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
             minScale={0.1}
             maxScale={4}
             centerOnInit={true}
-            disabled={isAdminMode} // disable drag-to-pan in admin mode
+            disabled={isAdminMode}
             limitToBounds={false}
           >
             {({ zoomIn, zoomOut, resetTransform }) => (
@@ -234,6 +255,19 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
                   <ShieldAlert size={15} />
                   <span>Admin</span>
                   {isAdminMode && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+                </button>
+
+                {/* Assets FAB — floating bottom-right */}
+                <button
+                  onClick={() => setAssetSidebarOpen(o => !o)}
+                  className={`absolute bottom-6 right-6 z-20 flex items-center gap-2 px-3.5 py-2 rounded-full shadow-lg backdrop-blur-md text-sm font-semibold border transition-all ${
+                    assetSidebarOpen
+                      ? 'bg-amber-500 text-white border-amber-400 shadow-amber-500/40'
+                      : 'bg-white/90 dark:bg-black/90 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-800 hover:border-amber-400 hover:text-amber-600 dark:hover:text-amber-400'
+                  }`}
+                >
+                  <Package size={15} />
+                  <span>Assets</span>
                 </button>
 
                 {/* Page switcher — bottom-center */}
@@ -293,12 +327,15 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
                     )}
 
                     {rooms.filter(r => (r.page_number || 1) === pageNumber).map(room => (
-                      <RoomZone 
-                        key={room.id} 
-                        room={room} 
-                        items={items.filter(i => i.room_id === room.id)} 
-                        activeAdmin={isAdminMode} 
+                      <RoomZone
+                        key={room.id}
+                        room={room}
+                        items={items.filter(i => i.room_id === room.id)}
+                        activeAdmin={isAdminMode}
+                        mapRef={mapRef}
                         onDeleteZone={handleDeleteZone}
+                        onEditZone={setEditingRoom}
+                        onUpdateZone={handleUpdateZone}
                         onItemDeleted={() => fetchRooms(activePlanId!)}
                       />
                     ))}
@@ -328,11 +365,24 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
       </div>
 
       {pendingZoneParams && (
-        <NewZoneModal 
+        <NewZoneModal
           pageNumber={pageNumber}
           onCancel={() => setPendingZoneParams(null)}
           onSave={handleCreateZone}
         />
+      )}
+
+      {editingRoom && (
+        <NewZoneModal
+          pageNumber={editingRoom.page_number || pageNumber}
+          initialRoom={editingRoom}
+          onCancel={() => setEditingRoom(null)}
+          onSave={handleSaveEditZone}
+        />
+      )}
+
+      {assetSidebarOpen && (
+        <AssetSidebar onClose={() => setAssetSidebarOpen(false)} />
       )}
     </div>
   );
