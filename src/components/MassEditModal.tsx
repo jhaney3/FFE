@@ -67,7 +67,7 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
   }, []);
 
   // Tags from ItemTypeAttributes scoped to the types in the selection (+ new type if changed)
-  const [availableTags, setAvailableTags] = useState<string[]>([]);
+  const [availableTags, setAvailableTags] = useState<any[]>([]);
 
   useEffect(() => {
     const typeIds = Array.from(new Set([
@@ -76,14 +76,32 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
     ]));
     if (typeIds.length === 0) return;
     supabase.from('ItemTypeAttributes')
-      .select('name')
+      .select('name, is_parent, item_type_id')
       .in('item_type_id', typeIds)
       .then(({ data }) => {
-        if (data) setAvailableTags(Array.from(new Set(data.map((r: any) => r.name))).sort());
+        if (data) {
+          // Deduplicate by name, prefer is_parent=true if any row has it
+          const seen = new Map<string, any>();
+          data.forEach((r: any) => {
+            if (!seen.has(r.name) || r.is_parent) seen.set(r.name, r);
+          });
+          setAvailableTags(Array.from(seen.values()).sort((a, b) => a.name.localeCompare(b.name)));
+        }
       });
   }, [selectedItems, typeId]);
 
-  const addSuggestions = availableTags.filter(t => !tagsToAdd.includes(t));
+  const parentSuggestions = availableTags.filter(t => t.is_parent && !tagsToAdd.includes(t.name));
+  const childSuggestions  = availableTags.filter(t => !t.is_parent && !tagsToAdd.includes(t.name));
+  const parentNames       = new Set(availableTags.filter(t => t.is_parent).map(t => t.name));
+
+  const addTag = (tagName: string, isParent: boolean) => {
+    if (isParent) {
+      // Radio: replace any existing parent tag
+      setTagsToAdd(prev => [...prev.filter(t => !parentNames.has(t)), tagName]);
+    } else {
+      setTagsToAdd(prev => [...prev, tagName]);
+    }
+  };
 
   const filteredTypes = itemTypes.filter(t =>
     t.name.toLowerCase().includes(typeSearch.toLowerCase())
@@ -204,11 +222,24 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
             <Section title="Set Attributes" enabled={attrsEnabled} onToggle={() => setAttrsEnabled(v => !v)} icon={<Tag size={14} />}>
               <p className="text-[11px] text-gray-400 mb-2">These tags will replace existing attributes on all selected items.</p>
               <div className="flex flex-wrap gap-1.5 mb-2">
-                {addSuggestions.map(tag => (
-                  <button key={tag} type="button"
-                    onClick={() => setTagsToAdd(prev => [...prev, tag])}
+                {parentSuggestions.length > 0 && (
+                  <div className="w-full">
+                    <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1 block">Grouping (pick one)</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {parentSuggestions.map(tag => (
+                        <button key={tag.name} type="button"
+                          onClick={() => addTag(tag.name, true)}
+                          className="text-[11px] px-2 py-1 rounded-full border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400 transition-colors"
+                        >+ {tag.name}</button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {childSuggestions.map(tag => (
+                  <button key={tag.name} type="button"
+                    onClick={() => addTag(tag.name, false)}
                     className="text-[11px] px-2 py-1 rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
-                  >+ {tag}</button>
+                  >+ {tag.name}</button>
                 ))}
                 <input
                   ref={tagInputRef}
@@ -227,12 +258,19 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
               </div>
               {tagsToAdd.length > 0 ? (
                 <div className="flex flex-wrap gap-1.5">
-                  {tagsToAdd.map(tag => (
-                    <span key={tag} className="text-[11px] px-2 py-1 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800 flex items-center gap-1">
-                      {tag}
-                      <button onClick={() => setTagsToAdd(prev => prev.filter(t => t !== tag))} className="hover:text-red-500 leading-none">×</button>
-                    </span>
-                  ))}
+                  {tagsToAdd.map(tag => {
+                    const isParent = parentNames.has(tag);
+                    return (
+                      <span key={tag} className={`text-[11px] px-2 py-1 rounded-full flex items-center gap-1 border ${
+                        isParent
+                          ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
+                          : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
+                      }`}>
+                        {tag}
+                        <button onClick={() => setTagsToAdd(prev => prev.filter(t => t !== tag))} className="hover:text-red-500 leading-none">×</button>
+                      </span>
+                    );
+                  })}
                 </div>
               ) : (
                 <p className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1">

@@ -32,6 +32,7 @@ import MassEditModal from './MassEditModal';
 
 export default function Dashboard() {
   const [items, setItems] = useState<any[]>([]);
+  const [tagMeta, setTagMeta] = useState<Map<string, boolean>>(new Map());
   const [loading, setLoading] = useState(true);
 
   // Hierarchical zone filters — each level resets the ones below it
@@ -63,7 +64,20 @@ export default function Dashboard() {
         )
       `)
       .order('created_at', { ascending: false });
-    if (data) setItems(data);
+    if (data) {
+      setItems(data);
+      const typeIds = [...new Set(data.map((i: any) => i.item_type_id).filter(Boolean))];
+      if (typeIds.length > 0) {
+        const { data: tagData } = await supabase
+          .from('ItemTypeAttributes')
+          .select('item_type_id, name')
+          .in('item_type_id', typeIds)
+          .eq('is_parent', true);
+        const meta = new Map<string, boolean>();
+        (tagData || []).forEach((t: any) => meta.set(`${t.item_type_id}:${t.name}`, true));
+        setTagMeta(meta);
+      }
+    }
     setLoading(false);
   };
 
@@ -159,7 +173,8 @@ export default function Dashboard() {
       'Qty Fair':       item.qty_fair,
       'Qty Poor':       item.qty_poor,
       'Total Quantity': item.qty_excellent + item.qty_good + item.qty_fair + item.qty_poor,
-      'Attributes':     Array.isArray(item.attributes) ? item.attributes.join(', ') : '',
+      'Grouping':       Array.isArray(item.attributes) ? (item.attributes.find((a: string) => tagMeta.get(`${item.item_type_id}:${a}`)) ?? '') : '',
+      'Attributes':     Array.isArray(item.attributes) ? item.attributes.filter((a: string) => !tagMeta.get(`${item.item_type_id}:${a}`)).join(', ') : '',
       'Notes':          item.notes || '',
       'Photo URL':      item.photo_url || '',
       'Added At':       new Date(item.created_at).toLocaleString(),
@@ -346,9 +361,19 @@ export default function Dashboard() {
                         <div className="font-semibold text-gray-900 dark:text-gray-100">{item.ItemTypes?.name}</div>
                         {item.attributes?.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1.5">
-                            {item.attributes.map((tag: string, i: number) => (
-                              <span key={i} className="text-[10px] uppercase font-semibold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-1.5 py-0.5 rounded-sm">{tag}</span>
-                            ))}
+                            {(() => {
+                              const firstParent = item.attributes.find((a: string) => tagMeta.get(`${item.item_type_id}:${a}`));
+                              return item.attributes.map((tag: string, i: number) => {
+                                const isParent = tag === firstParent;
+                                return (
+                                  <span key={i} className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded-sm ${
+                                    isParent
+                                      ? 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800'
+                                      : 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
+                                  }`}>{tag}</span>
+                                );
+                              });
+                            })()}
                           </div>
                         )}
                         {item.notes && (

@@ -10,7 +10,7 @@ interface BuildingGroup {
   rooms: RoomGroup[];
 }
 
-export default function RoomDetail({ items }: { items: any[] }) {
+export default function RoomDetail({ items, tagMeta = new Map() }: { items: any[]; tagMeta?: Map<string, boolean> }) {
   // Group: (building + level) → room → items
   const buildingMap = new Map<string, BuildingGroup>();
 
@@ -88,11 +88,18 @@ export default function RoomDetail({ items }: { items: any[] }) {
                       <div className="font-semibold text-gray-900 text-sm">{item.ItemTypes?.name || 'Unknown'}</div>
                       {(item.attributes?.length > 0) && (
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {item.attributes.map((attr: string, ai: number) => (
-                            <span key={ai} className="text-[10px] uppercase font-semibold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-sm">
-                              {attr}
-                            </span>
-                          ))}
+                          {item.attributes.map((attr: string, ai: number) => {
+                            const isParent = tagMeta.get(`${item.item_type_id}:${attr}`);
+                            return (
+                              <span key={ai} className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded-sm ${
+                                isParent
+                                  ? 'text-amber-700 bg-amber-50 border border-amber-200'
+                                  : 'text-blue-600 bg-blue-50'
+                              }`}>
+                                {attr}
+                              </span>
+                            );
+                          })}
                         </div>
                       )}
                       {item.notes && (

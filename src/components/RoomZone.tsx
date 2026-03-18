@@ -52,7 +52,7 @@ function getRoomColor(roomType?: string): string {
 
 type Corner = 'tl' | 'tr' | 'bl' | 'br';
 
-export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDeleteZone, onEditZone, onUpdateZone, onItemDeleted, spotlightType, spotlightAttribute }: {
+export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDeleteZone, onEditZone, onUpdateZone, onItemDeleted, spotlightType, spotlightParent, spotlightAttribute, tagMeta }: {
   room: any;
   items?: any[];
   activeAdmin: boolean;
@@ -62,7 +62,9 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
   onUpdateZone?: (id: string, coords: { x: number; y: number; width: number; height: number }) => void;
   onItemDeleted?: () => void;
   spotlightType?: string | null;
+  spotlightParent?: string | null;
   spotlightAttribute?: string | null;
+  tagMeta?: Map<string, boolean>;
 }) {
   const [isHovered, setIsHovered]         = useState(false);
   const [isOpen, setIsOpen]               = useState(false);
@@ -316,10 +318,14 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
   const spotlightActive = !!spotlightType;
   const spotlightCount = spotlightActive
     ? items.reduce((sum, item) => {
-        if ((item.ItemTypes?.name) !== spotlightType) return sum;
+        if (item.ItemTypes?.name !== spotlightType) return sum;
         if (spotlightAttribute) {
+          // Full combo match (e.g. "Adult, Black")
           const combo = item.attributes?.length > 0 ? item.attributes.join(', ') : '(no attributes)';
           if (combo !== spotlightAttribute) return sum;
+        } else if (spotlightParent) {
+          // Parent-only match — item must have the parent attribute anywhere in its array
+          if (!(item.attributes || []).includes(spotlightParent)) return sum;
         }
         return sum + (item.qty_excellent || 0) + (item.qty_good || 0) + (item.qty_fair || 0) + (item.qty_poor || 0);
       }, 0)
@@ -534,9 +540,17 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
                         {item.qty_fair      > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-yellow-400"/><span className="text-[11px] font-bold text-yellow-400">{item.qty_fair}     </span><span className="text-[10px] text-yellow-400/60">Fair</span></span>}
                         {item.qty_poor      > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-red-400"   /><span className="text-[11px] font-bold text-red-400"  >{item.qty_poor}     </span><span className="text-[10px] text-red-400/60"  >Poor</span></span>}
                         {item.attributes?.length > 0 && <span className="ffe-attr w-px h-3 bg-white/15 shrink-0 mx-0.5" />}
-                        {item.attributes?.map((tag: string) => (
-                          <span key={tag} className="ffe-attr text-[10px] px-1.5 py-0.5 rounded bg-indigo-500/15 text-indigo-300/90 shrink-0 leading-none">{tag}</span>
-                        ))}
+                        {item.attributes?.map((tag: string) => {
+                          const firstParent = item.attributes.find((a: string) => tagMeta?.get(`${item.item_type_id}:${a}`));
+                          const isParent = tag === firstParent;
+                          return (
+                            <span key={tag} className={`ffe-attr text-[10px] px-1.5 py-0.5 rounded shrink-0 leading-none ${
+                              isParent
+                                ? 'bg-amber-500/20 text-amber-300/90 font-semibold'
+                                : 'bg-indigo-500/15 text-indigo-300/90'
+                            }`}>{tag}</span>
+                          );
+                        })}
                       </div>
                       {item.notes && <p className="ffe-notes text-[10px] text-gray-500 mt-0.5 truncate italic leading-tight">{item.notes}</p>}
                     </div>

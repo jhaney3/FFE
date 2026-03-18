@@ -54,11 +54,12 @@ function ReportContent() {
   const [mapComboRoomCounts, setMapComboRoomCounts] = useState<Record<string, Record<string, number>>>({});
   const [mapComboRooms, setMapComboRooms]           = useState<Record<string, string[]>>({});
 
-  const mapOnly       = searchParams.get('mapOnly') === 'true';
-  const floorplanId   = searchParams.get('floorplan') || '';
-  const pageNum       = parseInt(searchParams.get('page') || '1', 10);
-  const spotlightType = searchParams.get('spotlightType') || '';
-  const spotlightAttr = searchParams.get('spotlightAttribute') || '';
+  const mapOnly         = searchParams.get('mapOnly') === 'true';
+  const floorplanId     = searchParams.get('floorplan') || '';
+  const pageNum         = parseInt(searchParams.get('page') || '1', 10);
+  const spotlightType   = searchParams.get('spotlightType') || '';
+  const spotlightParent = searchParams.get('spotlightParent') || '';
+  const spotlightAttr   = searchParams.get('spotlightAttribute') || '';
 
   const filters = {
     level:     searchParams.get('level')     || '',
@@ -99,6 +100,8 @@ function ReportContent() {
                   if (spotlightAttr) {
                     const combo = item.attributes?.length > 0 ? item.attributes.join(', ') : '(no attributes)';
                     if (combo !== spotlightAttr) return false;
+                  } else if (spotlightParent) {
+                    if (!(item.attributes || []).includes(spotlightParent)) return false;
                   }
                   return (item.qty_excellent || 0) + (item.qty_good || 0) + (item.qty_fair || 0) + (item.qty_poor || 0) > 0;
                 })
@@ -120,6 +123,7 @@ function ReportContent() {
             if (spotlightType && typeName !== spotlightType) continue;
             const combo = item.attributes?.length > 0 ? item.attributes.join(', ') : '(no attributes)';
             if (spotlightAttr && combo !== spotlightAttr) continue;
+            if (!spotlightAttr && spotlightParent && !(item.attributes || []).includes(spotlightParent)) continue;
             const qty = (item.qty_excellent || 0) + (item.qty_good || 0) + (item.qty_fair || 0) + (item.qty_poor || 0);
 
             const label = spotlightType ? combo : `${typeName} — ${combo}`;
@@ -177,7 +181,11 @@ function ReportContent() {
     const pageRooms      = mapRooms.filter(r => (r.page_number || 1) === pageNum);
     const reportDate     = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
     const spotlightLabel = spotlightType
-      ? (spotlightAttr ? `${spotlightType} — ${spotlightAttr}` : spotlightType)
+      ? spotlightAttr
+        ? `${spotlightType} — ${spotlightAttr}`
+        : spotlightParent
+          ? `${spotlightType} — ${spotlightParent} (all)`
+          : spotlightType
       : null;
 
     return (

@@ -23,8 +23,12 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
   const [pendingZoneParams, setPendingZoneParams] = useState<{x: number, y: number, width: number, height: number} | null>(null);
   const [editingRoom, setEditingRoom] = useState<any | null>(null);
   const [assetSidebarOpen, setAssetSidebarOpen] = useState(false);
-  const [activeSpotlightType, setActiveSpotlightType] = useState<string | null>(null);
+  const [activeSpotlightType, setActiveSpotlightType]           = useState<string | null>(null);
+  const [activeSpotlightParent, setActiveSpotlightParent]       = useState<string | null>(null);
   const [activeSpotlightAttribute, setActiveSpotlightAttribute] = useState<string | null>(null);
+
+  // tagMeta for spotlight-aware attribute color-coding in RoomZone popouts
+  const [tagMeta, setTagMeta] = useState<Map<string, boolean>>(new Map());
 
   // PDF state
   const [numPages, setNumPages] = useState<number>(1);
@@ -68,7 +72,21 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
       const roomIds = roomsData.map(r => r.id);
       if (roomIds.length > 0) {
         const { data: itemsData } = await supabase.from('InventoryItems').select('*, ItemTypes(name)').in('room_id', roomIds);
-        if (itemsData) setItems(itemsData);
+        if (itemsData) {
+          setItems(itemsData);
+          // Fetch parent-attr metadata for color-coding
+          const typeIds = [...new Set(itemsData.map((i: any) => i.item_type_id).filter(Boolean))];
+          if (typeIds.length > 0) {
+            const { data: tagData } = await supabase
+              .from('ItemTypeAttributes')
+              .select('item_type_id, name')
+              .in('item_type_id', typeIds)
+              .eq('is_parent', true);
+            const meta = new Map<string, boolean>();
+            (tagData || []).forEach((t: any) => meta.set(`${t.item_type_id}:${t.name}`, true));
+            setTagMeta(meta);
+          }
+        }
       } else {
         setItems([]);
       }
@@ -250,9 +268,11 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
                 <ItemTypeFilter
                   items={items}
                   activeType={activeSpotlightType}
+                  activeParent={activeSpotlightParent}
                   activeAttribute={activeSpotlightAttribute}
-                  onSelect={(type, attr) => {
+                  onSelect={(type, parent, attr) => {
                     setActiveSpotlightType(type);
+                    setActiveSpotlightParent(parent);
                     setActiveSpotlightAttribute(attr);
                   }}
                   floorplanId={activePlanId}
@@ -354,7 +374,9 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
                         onUpdateZone={handleUpdateZone}
                         onItemDeleted={() => fetchRooms(activePlanId!)}
                         spotlightType={activeSpotlightType}
+                        spotlightParent={activeSpotlightParent}
                         spotlightAttribute={activeSpotlightAttribute}
+                        tagMeta={tagMeta}
                       />
                     ))}
 

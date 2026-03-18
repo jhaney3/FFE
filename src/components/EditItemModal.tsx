@@ -62,6 +62,11 @@ export default function EditItemModal({ item, onClose, onSaved }: {
 
   useEffect(() => {
     fetchTypes();
+    // Fetch attributes immediately using the known item_type_id — don't wait for itemTypes to load
+    if (item.item_type_id) {
+      supabase.from('ItemTypeAttributes').select('*').eq('item_type_id', item.item_type_id)
+        .then(({ data }) => { if (data) applyTags(data); });
+    }
   }, []);
 
   useEffect(() => {
@@ -83,6 +88,17 @@ export default function EditItemModal({ item, onClose, onSaved }: {
     if (data) setItemTypes(data);
   };
 
+  const applyTags = (tags: any[]) => {
+    setAvailableTags(tags);
+    // Enforce radio: if more than one parent is selected, keep only the last one
+    const parentNames = new Set(tags.filter((t: any) => t.is_parent).map((t: any) => t.name));
+    setSelectedTags(prev => {
+      const selectedParents = prev.filter(t => parentNames.has(t));
+      if (selectedParents.length <= 1) return prev;
+      return [...prev.filter(t => !parentNames.has(t)), selectedParents[selectedParents.length - 1]];
+    });
+  };
+
   const fetchTagsForType = async (typeName: string) => {
     const existingType = itemTypes.find(t => t.name.toLowerCase() === typeName.toLowerCase());
     if (existingType) {
@@ -90,16 +106,51 @@ export default function EditItemModal({ item, onClose, onSaved }: {
         .from('ItemTypeAttributes')
         .select('*')
         .eq('item_type_id', existingType.id);
-      if (data) setAvailableTags(data);
+      if (data) applyTags(data);
     } else {
       setAvailableTags([]);
     }
   };
 
   const toggleTag = (tagName: string) => {
-    setSelectedTags(prev =>
-      prev.includes(tagName) ? prev.filter(t => t !== tagName) : [...prev, tagName]
-    );
+    const tag = availableTags.find((t: any) => t.name === tagName);
+    const isParent = tag?.is_parent ?? false;
+    if (selectedTags.includes(tagName)) {
+      setSelectedTags(prev => prev.filter(t => t !== tagName));
+    } else if (isParent) {
+      const parentNames = new Set(availableTags.filter((t: any) => t.is_parent).map((t: any) => t.name));
+      setSelectedTags(prev => [...prev.filter(t => !parentNames.has(t)), tagName]);
+    } else {
+      setSelectedTags(prev => [...prev, tagName]);
+    }
+  };
+
+  const toggleIsParent = async (tag: any) => {
+    const promoting = !tag.is_parent;
+    await supabase.from('ItemTypeAttributes').update({ is_parent: promoting }).eq('id', tag.id);
+
+    if (promoting) {
+      const existingParentNames = availableTags
+        .filter((t: any) => t.is_parent && t.name !== tag.name)
+        .map((t: any) => t.name);
+      if (existingParentNames.length > 0) {
+        const { data: affected } = await supabase
+          .from('InventoryItems')
+          .select('id, attributes')
+          .eq('item_type_id', tag.item_type_id)
+          .contains('attributes', [tag.name]);
+        const toClean = (affected || []).filter((item: any) =>
+          existingParentNames.some(p => (item.attributes || []).includes(p))
+        );
+        await Promise.all(toClean.map((item: any) =>
+          supabase.from('InventoryItems')
+            .update({ attributes: item.attributes.filter((a: string) => a !== tag.name) })
+            .eq('id', item.id)
+        ));
+      }
+    }
+
+    fetchTagsForType(typeSearch);
   };
 
   const commitTag = (value: string, keepOpen: boolean) => {
@@ -355,21 +406,45 @@ export default function EditItemModal({ item, onClose, onSaved }: {
                 <Tag size={16} className="text-gray-400" /> Attributes
               </label>
 
+              {/* Parent (grouping) tags — always visible, filled when selected */}
+              {availableTags.some((t: any) => t.is_parent) && (
+                <div className="mb-2">
+                  <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1 block">Grouping (pick one)</span>
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    {availableTags.filter((t: any) => t.is_parent).map((tag: any) => {
+                      const isSelected = selectedTags.includes(tag.name);
+                      return (
+                        <div key={tag.id} className="flex items-center gap-0.5 group">
+                          <button type="button" onClick={() => toggleTag(tag.name)}
+                            className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors flex items-center gap-1 ${
+                              isSelected
+                                ? 'bg-amber-500 border-amber-500 text-white dark:bg-amber-600 dark:border-amber-600'
+                                : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400'
+                            }`}>
+                            {isSelected && <Check size={10} />}
+                            {tag.name}
+                          </button>
+                          <button type="button" onClick={() => toggleIsParent(tag)} title="Unmark as grouping"
+                            className="text-amber-400 hover:text-gray-400 opacity-0 group-hover:opacity-100 transition-all text-[10px] leading-none">★</button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Child (detail) tags — gray, multi-select */}
               <div className="flex flex-wrap gap-2 mb-3 items-center">
-                {availableTags.map(tag => {
-                  const isSelected = selectedTags.includes(tag.name);
-                  if (isSelected) return null;
-                  return (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      onClick={() => toggleTag(tag.name)}
-                      className="px-3 py-1.5 rounded-full text-xs font-medium border bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors"
-                    >
+                {availableTags.filter((t: any) => !t.is_parent && !selectedTags.includes(t.name)).map((tag: any) => (
+                  <div key={tag.id} className="flex items-center gap-0.5 group">
+                    <button type="button" onClick={() => toggleTag(tag.name)}
+                      className="px-3 py-1.5 rounded-full text-xs font-medium border bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors">
                       {tag.name}
                     </button>
-                  );
-                })}
+                    <button type="button" onClick={() => toggleIsParent(tag)} title="Mark as grouping"
+                      className="text-gray-300 hover:text-amber-400 opacity-0 group-hover:opacity-100 transition-all text-[10px] leading-none">★</button>
+                  </div>
+                ))}
 
                 {isAddingTag ? (
                   <input
@@ -394,20 +469,18 @@ export default function EditItemModal({ item, onClose, onSaved }: {
               </div>
 
               <div className="w-full min-h-[48px] p-2 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm flex flex-wrap gap-2 items-start">
-                {selectedTags.length === 0 ? (
-                  <span className="text-sm text-gray-400 p-1.5 italic">No attributes selected...</span>
+                {selectedTags.filter(st => !availableTags.find((t: any) => t.name === st)?.is_parent).length === 0 ? (
+                  <span className="text-sm text-gray-400 p-1.5 italic">No detail attributes selected...</span>
                 ) : (
-                  selectedTags.map(st => (
-                    <button
-                      key={st}
-                      type="button"
-                      onClick={() => toggleTag(st)}
-                      className="px-3 py-1.5 rounded-md text-xs font-medium bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-900/40 dark:border-blue-800 dark:text-blue-300 transition-colors flex items-center gap-1.5 group"
-                    >
-                      {st}
-                      <span className="opacity-50 group-hover:opacity-100 group-hover:text-red-500 transition-all"><X size={12} /></span>
-                    </button>
-                  ))
+                  selectedTags
+                    .filter(st => !availableTags.find((t: any) => t.name === st)?.is_parent)
+                    .map(st => (
+                      <button key={st} type="button" onClick={() => toggleTag(st)}
+                        className="px-3 py-1.5 rounded-md text-xs font-medium bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-900/40 dark:border-blue-800 dark:text-blue-300 transition-colors flex items-center gap-1.5 group">
+                        {st}
+                        <span className="opacity-50 group-hover:opacity-100 group-hover:text-red-500 transition-all"><X size={12} /></span>
+                      </button>
+                    ))
                 )}
               </div>
             </div>
