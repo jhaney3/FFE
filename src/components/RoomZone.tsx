@@ -52,7 +52,7 @@ function getRoomColor(roomType?: string): string {
 
 type Corner = 'tl' | 'tr' | 'bl' | 'br';
 
-export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDeleteZone, onEditZone, onUpdateZone, onItemDeleted }: {
+export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDeleteZone, onEditZone, onUpdateZone, onItemDeleted, spotlightType, spotlightAttribute }: {
   room: any;
   items?: any[];
   activeAdmin: boolean;
@@ -61,6 +61,8 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
   onEditZone?:   (room: any) => void;
   onUpdateZone?: (id: string, coords: { x: number; y: number; width: number; height: number }) => void;
   onItemDeleted?: () => void;
+  spotlightType?: string | null;
+  spotlightAttribute?: string | null;
 }) {
   const [isHovered, setIsHovered]         = useState(false);
   const [isOpen, setIsOpen]               = useState(false);
@@ -310,6 +312,21 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
 
   // ── Render ────────────────────────────────────────────────────────────────
 
+  // Spotlight computation
+  const spotlightActive = !!spotlightType;
+  const spotlightCount = spotlightActive
+    ? items.reduce((sum, item) => {
+        if ((item.ItemTypes?.name) !== spotlightType) return sum;
+        if (spotlightAttribute) {
+          const combo = item.attributes?.length > 0 ? item.attributes.join(', ') : '(no attributes)';
+          if (combo !== spotlightAttribute) return sum;
+        }
+        return sum + (item.qty_excellent || 0) + (item.qty_good || 0) + (item.qty_fair || 0) + (item.qty_poor || 0);
+      }, 0)
+    : 0;
+  const spotlightMatch = spotlightActive && spotlightCount > 0;
+  const spotlightDim   = spotlightActive && spotlightCount === 0;
+
   const dotColor = getRoomColor(room.room_type);
   const active   = isHovered || isOpen;
 
@@ -330,18 +347,24 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
         if (isOpen) setIsOpen(false);
         else openPopout();
       }}
-      className={`absolute group ${
+      className={`absolute group transition-all ${
         isOver
           ? 'bg-blue-500/50 border-2 border-blue-400 ring-4 ring-blue-300/50 shadow-lg z-20 scale-[1.02]'
           : activeAdmin
             ? 'bg-indigo-500/20 border border-indigo-500/60 hover:bg-indigo-500/35 z-10 hover:z-20 cursor-move'
             : 'hover:bg-blue-500/10 border border-transparent hover:border-blue-300/50 z-10 cursor-pointer'
-      } ${isOpen && !activeAdmin ? '!z-[100] !border-blue-400/50 bg-blue-500/10 ring-2 ring-blue-400/20' : ''}`}
+      } ${isOpen && !activeAdmin ? '!z-[100] !border-blue-400/50 bg-blue-500/10 ring-2 ring-blue-400/20' : ''} ${
+        spotlightDim ? 'opacity-30 grayscale' : ''
+      }`}
       style={{
         left:   `${coords.x}%`,
         top:    `${coords.y}%`,
         width:  `${coords.width}%`,
         height: `${coords.height}%`,
+        ...(spotlightMatch ? {
+          backgroundColor: 'rgba(99,102,241,0.35)',
+          outline: '2px solid #6366f1',
+        } : {}),
       }}
     >
 
@@ -384,6 +407,13 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
       {activeAdmin && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 px-2 py-0.5 rounded text-[10px] font-bold text-indigo-200 bg-indigo-900/50 whitespace-nowrap max-w-[90%] truncate">
           {room.name}
+        </div>
+      )}
+
+      {/* ── Spotlight count badge ── */}
+      {spotlightMatch && (
+        <div className="absolute top-1 right-1 z-40 pointer-events-none bg-indigo-600 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-full shadow leading-none">
+          {spotlightCount}
         </div>
       )}
 

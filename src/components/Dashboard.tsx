@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Download, Filter, Search, Pencil, X, Check, Minus } from 'lucide-react';
+import { Download, Filter, Search, Pencil, X, Check, Minus, Printer } from 'lucide-react';
 
 function Checkbox({ checked, indeterminate, onChange }: {
   checked: boolean;
@@ -174,6 +174,17 @@ export default function Dashboard() {
     document.body.removeChild(link);
   };
 
+  const openReport = () => {
+    const params = new URLSearchParams();
+    if (levelFilter)     params.set('level',     levelFilter);
+    if (buildingFilter)  params.set('building',  buildingFilter);
+    if (roomTypeFilter)  params.set('roomType',  roomTypeFilter);
+    if (typeFilter)      params.set('type',      typeFilter);
+    if (qualityFilter)   params.set('quality',   qualityFilter);
+    if (attributeFilter) params.set('attribute', attributeFilter);
+    window.open(`/report?${params.toString()}`, '_blank');
+  };
+
   const selectClass = "w-full px-3 py-2 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg outline-none focus:ring-2 ring-blue-500/50 appearance-none text-gray-700 dark:text-gray-200 text-sm";
 
   return (
@@ -186,12 +197,20 @@ export default function Dashboard() {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Inventory Dashboard</h1>
             <p className="text-gray-500 dark:text-gray-400 mt-1">View, filter, and export the logged FFE items.</p>
           </div>
-          <button
-            onClick={exportCSV}
-            className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg shadow-sm font-medium flex items-center gap-2 transition-all active:scale-95"
-          >
-            <Download size={18} /> Export CSV
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={openReport}
+              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg shadow-sm font-medium flex items-center gap-2 transition-all active:scale-95"
+            >
+              <Printer size={18} /> Print Report
+            </button>
+            <button
+              onClick={exportCSV}
+              className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg shadow-sm font-medium flex items-center gap-2 transition-all active:scale-95"
+            >
+              <Download size={18} /> Export CSV
+            </button>
+          </div>
         </div>
 
         {/* Filter Panel */}

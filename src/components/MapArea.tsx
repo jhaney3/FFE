@@ -7,6 +7,7 @@ import PdfUploader from './PdfUploader';
 import NewZoneModal from './NewZoneModal';
 import { Layers, ShieldAlert, Trash2, ChevronLeft, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize, Package } from 'lucide-react';
 import AssetSidebar from './AssetSidebar';
+import ItemTypeFilter from './ItemTypeFilter';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
@@ -22,7 +23,9 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
   const [pendingZoneParams, setPendingZoneParams] = useState<{x: number, y: number, width: number, height: number} | null>(null);
   const [editingRoom, setEditingRoom] = useState<any | null>(null);
   const [assetSidebarOpen, setAssetSidebarOpen] = useState(false);
-  
+  const [activeSpotlightType, setActiveSpotlightType] = useState<string | null>(null);
+  const [activeSpotlightAttribute, setActiveSpotlightAttribute] = useState<string | null>(null);
+
   // PDF state
   const [numPages, setNumPages] = useState<number>(1);
   const [pageNumber, setPageNumber] = useState<number>(1);
@@ -243,6 +246,19 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
                   <button onClick={() => resetTransform()} className="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"><Maximize size={20}/></button>
                 </div>
 
+                {/* Spotlight filter panel — bottom-left, above Admin */}
+                <ItemTypeFilter
+                  items={items}
+                  activeType={activeSpotlightType}
+                  activeAttribute={activeSpotlightAttribute}
+                  onSelect={(type, attr) => {
+                    setActiveSpotlightType(type);
+                    setActiveSpotlightAttribute(attr);
+                  }}
+                  floorplanId={activePlanId}
+                  pageNumber={pageNumber}
+                />
+
                 {/* Admin mode — floating bottom-left */}
                 <button
                   onClick={() => setIsAdminMode(m => !m)}
@@ -337,6 +353,8 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
                         onEditZone={setEditingRoom}
                         onUpdateZone={handleUpdateZone}
                         onItemDeleted={() => fetchRooms(activePlanId!)}
+                        spotlightType={activeSpotlightType}
+                        spotlightAttribute={activeSpotlightAttribute}
                       />
                     ))}
 
