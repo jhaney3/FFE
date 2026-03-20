@@ -64,8 +64,13 @@ export default function Sidebar() {
   };
 
   const deletePhoto = async (id: string) => {
+    const photo = photos.find(p => p.id === id);
     setPhotos(prev => prev.filter(p => p.id !== id));
     await supabase.from('IncomingPhotos').delete().eq('id', id);
+    if (photo?.photo_url) {
+      const fileName = photo.photo_url.split('/').pop();
+      if (fileName) await supabase.storage.from('inventory_photos').remove([fileName]);
+    }
   };
 
   useEffect(() => {
