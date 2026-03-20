@@ -494,8 +494,9 @@ export default function EditItemModal({ item, onClose, onSaved }: {
                     <input
                       type="number"
                       min="1"
-                      value={totalQuantity}
-                      onChange={(e) => setTotalQuantity(parseInt(e.target.value) || 1)}
+                      value={totalQuantity || ''}
+                      onChange={(e) => setTotalQuantity(parseInt(e.target.value) || 0)}
+                      onBlur={() => { if (!totalQuantity || totalQuantity < 1) setTotalQuantity(1); }}
                       className="w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-950 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500/50 px-3 py-2 border outline-none transition-all font-bold"
                     />
                   </div>

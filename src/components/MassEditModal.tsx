@@ -216,7 +216,7 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
         </div>
 
         {step === 'edit' ? (
-          <div className="p-5 space-y-3 max-h-[72vh] overflow-y-auto">
+          <div className="p-5 space-y-3 max-h-[72vh] overflow-y-auto custom-scrollbar">
 
             {/* Attributes */}
             <Section title="Set Attributes" enabled={attrsEnabled} onToggle={() => setAttrsEnabled(v => !v)} icon={<Tag size={14} />}>

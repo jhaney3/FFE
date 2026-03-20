@@ -114,7 +114,7 @@ export default function AssetSidebar({ onClose }: { onClose: () => void }) {
 
       <p className="px-3 pb-2 text-[10px] text-gray-400 shrink-0">Drag onto a room zone to add an item.</p>
 
-      <div className="flex-1 overflow-y-auto px-3 pb-3">
+      <div className="flex-1 overflow-y-auto px-3 pb-3 custom-scrollbar">
         {filtered.length === 0 ? (
           <div className="text-center py-10 text-gray-400">
             <Package size={28} className="mx-auto mb-2 opacity-40" />

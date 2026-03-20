@@ -198,7 +198,7 @@ export default function ItemTypeFilter({
       </div>
 
       {/* List */}
-      <div className="max-h-80 overflow-y-scroll rounded-b-2xl">
+      <div className="max-h-80 overflow-y-scroll rounded-b-2xl custom-scrollbar">
         {filtered.length === 0 ? (
           <div className="py-4 text-center text-xs text-gray-400">No item types found</div>
         ) : (
