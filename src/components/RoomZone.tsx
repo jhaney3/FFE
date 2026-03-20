@@ -91,7 +91,7 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
   // Popout drag/resize
   const popoutDrag    = useRef({ active: false, startX: 0, startY: 0, startLeft: 0, startTop: 0 });
   const pos           = useRef({ left: 0, top: 0 });
-  const size          = useRef({ width: 288, height: 0 });
+  const size          = useRef({ width: 360, height: 0 });
   const popoutResize  = useRef({ active: false, startX: 0, startY: 0, startW: 0, startH: 0 });
 
   const { isOver, setNodeRef } = useDroppable({ id: room.id, data: { type: 'room', room } });
@@ -145,7 +145,8 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
     if (!isOpen) return;
     requestAnimationFrame(() => {
       if (popoutRef.current && size.current.height === 0) {
-        const h = popoutRef.current.offsetHeight;
+        const MAX_H = 320; // ~3 items
+        const h = Math.min(popoutRef.current.offsetHeight, MAX_H);
         size.current.height = h;
         popoutRef.current.style.height = `${h}px`;
       }
@@ -157,7 +158,7 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
   const openPopout = () => {
     if (!zoneRef.current) return;
     const rect = zoneRef.current.getBoundingClientRect();
-    const popoutW    = size.current.width || 288;
+    const popoutW    = size.current.width || 360;
     const estimatedH = size.current.height || 320;
 
     const left = Math.min(
