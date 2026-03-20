@@ -3,14 +3,17 @@
 import { useState, useEffect } from 'react';
 import { QrCode, Smartphone, ChevronUp, ChevronDown } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
+import { supabase } from '@/lib/supabase';
 
 export default function PhotoUploader() {
   const [cameraUrl, setCameraUrl] = useState('');
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   useEffect(() => {
-    // Generate full URL dynamically so it works in dev on localhost/network IP or prod
-    setCameraUrl(`${window.location.origin}/camera`);
+    supabase.auth.getUser().then(({ data }) => {
+      const uid = data.user?.id ?? 'unknown';
+      setCameraUrl(`${window.location.origin}/camera?uid=${uid}`);
+    });
   }, []);
 
   return (

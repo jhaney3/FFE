@@ -50,64 +50,66 @@ function DraggableThumbnail({ photo, onDelete }: { photo: any, onDelete: (id: st
 export default function Sidebar() {
   const [photos, setPhotos] = useState<any[]>([]);
   const [isOpen, setIsOpen] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
 
-  const fetchPhotos = async () => {
-    const { data, error } = await supabase
+  const fetchPhotos = async (uid: string) => {
+    const { data } = await supabase
       .from('IncomingPhotos')
       .select('*')
       .eq('status', 'pending')
+      .eq('uploaded_by', uid)
       .order('created_at', { ascending: false });
-    
+
     if (data) setPhotos(data);
   };
 
   const deletePhoto = async (id: string) => {
-    // Optimistic UI update
     setPhotos(prev => prev.filter(p => p.id !== id));
     await supabase.from('IncomingPhotos').delete().eq('id', id);
   };
 
   useEffect(() => {
-    fetchPhotos();
+    supabase.auth.getUser().then(({ data }) => {
+      const uid = data.user?.id;
+      if (!uid) return;
+      setUserId(uid);
+      fetchPhotos(uid);
 
-    const channel = supabase
-      .channel('incoming-photos-changes')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'IncomingPhotos' },
-        (payload) => {
-          const photo = payload.new as any;
-          if (photo.status === 'pending') {
-            setPhotos(prev => [photo, ...prev]);
+      const channel = supabase
+        .channel(`incoming-photos-${uid}`)
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'IncomingPhotos', filter: `uploaded_by=eq.${uid}` },
+          (payload) => {
+            const photo = payload.new as any;
+            if (photo.status === 'pending') {
+              setPhotos(prev => [photo, ...prev]);
+            }
           }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'IncomingPhotos' },
-        (payload) => {
-          const photo = payload.new as any;
-          if (photo.status === 'pending') {
-            // Restore to triage (e.g. item deleted from a zone)
-            setPhotos(prev => prev.find(p => p.id === photo.id) ? prev : [photo, ...prev]);
-          } else {
-            // Processed/removed — drop from triage list
-            setPhotos(prev => prev.filter(p => p.id !== photo.id));
+        )
+        .on(
+          'postgres_changes',
+          { event: 'UPDATE', schema: 'public', table: 'IncomingPhotos', filter: `uploaded_by=eq.${uid}` },
+          (payload) => {
+            const photo = payload.new as any;
+            if (photo.status === 'pending') {
+              setPhotos(prev => prev.find(p => p.id === photo.id) ? prev : [photo, ...prev]);
+            } else {
+              setPhotos(prev => prev.filter(p => p.id !== photo.id));
+            }
           }
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'IncomingPhotos' },
-        (payload) => {
-          setPhotos(prev => prev.filter(p => p.id !== payload.old.id));
-        }
-      )
-      .subscribe();
+        )
+        .on(
+          'postgres_changes',
+          { event: 'DELETE', schema: 'public', table: 'IncomingPhotos' },
+          (payload) => {
+            setPhotos(prev => prev.filter(p => p.id !== payload.old.id));
+          }
+        )
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+      return () => { supabase.removeChannel(channel); };
+    });
   }, []);
 
   return (
