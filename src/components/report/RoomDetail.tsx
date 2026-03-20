@@ -88,7 +88,12 @@ export default function RoomDetail({ items, tagMeta = new Map() }: { items: any[
                       <div className="font-semibold text-gray-900 text-sm">{item.ItemTypes?.name || 'Unknown'}</div>
                       {(item.attributes?.length > 0) && (
                         <div className="flex flex-wrap gap-1 mt-1">
-                          {item.attributes.map((attr: string, ai: number) => {
+                          {[...item.attributes].sort((a: string, b: string) => {
+                            const aP = tagMeta.get(`${item.item_type_id}:${a}`) ?? false;
+                            const bP = tagMeta.get(`${item.item_type_id}:${b}`) ?? false;
+                            if (aP !== bP) return aP ? -1 : 1;
+                            return a.localeCompare(b);
+                          }).map((attr: string, ai: number) => {
                             const isParent = tagMeta.get(`${item.item_type_id}:${attr}`);
                             return (
                               <span key={ai} className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded-sm ${

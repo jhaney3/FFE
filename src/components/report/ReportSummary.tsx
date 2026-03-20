@@ -118,7 +118,7 @@ function QCell({ n, color }: { n: number; color: string }) {
 function AttrPills({ attrs, tagMeta, typeId }: { attrs: string[]; tagMeta: Map<string, boolean>; typeId?: string }) {
   if (attrs.length === 0) return <span className="italic text-gray-400">(no attributes)</span>;
   const parentAttrs = attrs.filter(a => typeId ? tagMeta.get(`${typeId}:${a}`) : false);
-  const childAttrs  = attrs.filter(a => !(typeId ? tagMeta.get(`${typeId}:${a}`) : false));
+  const childAttrs  = attrs.filter(a => !(typeId ? tagMeta.get(`${typeId}:${a}`) : false)).sort((a, b) => a.localeCompare(b));
   return (
     <span className="flex flex-wrap gap-1 items-center">
       {parentAttrs.map(a => (

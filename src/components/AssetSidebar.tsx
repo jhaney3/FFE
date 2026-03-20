@@ -5,10 +5,17 @@ import { useDraggable } from '@dnd-kit/core';
 import { X, Package, Search, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
-function AssetCard({ asset, onDelete }: { asset: any; onDelete: (id: string) => void }) {
+function AssetCard({ asset, onDelete, tagMeta }: { asset: any; onDelete: (id: string) => void; tagMeta: Map<string, boolean> }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `asset-${asset.id}`,
     data: { type: 'asset', asset },
+  });
+
+  const sortedAttrs = [...(asset.attributes ?? [])].sort((a: string, b: string) => {
+    const aP = tagMeta.get(`${asset.item_type_id}:${a}`) ?? false;
+    const bP = tagMeta.get(`${asset.item_type_id}:${b}`) ?? false;
+    if (aP !== bP) return aP ? -1 : 1;
+    return a.localeCompare(b);
   });
 
   return (
@@ -33,13 +40,20 @@ function AssetCard({ asset, onDelete }: { asset: any; onDelete: (id: string) => 
 
       <div className="p-2">
         <p className="text-[12px] font-semibold text-gray-800 dark:text-gray-100 truncate leading-tight">{asset.name}</p>
-        {asset.attributes?.length > 0 && (
+        {sortedAttrs.length > 0 && (
           <div className="flex flex-wrap gap-1 mt-1">
-            {asset.attributes.slice(0, 2).map((attr: string) => (
-              <span key={attr} className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 leading-none">{attr}</span>
-            ))}
-            {asset.attributes.length > 2 && (
-              <span className="text-[10px] text-gray-400">+{asset.attributes.length - 2}</span>
+            {sortedAttrs.slice(0, 2).map((attr: string) => {
+              const isParent = tagMeta.get(`${asset.item_type_id}:${attr}`) ?? false;
+              return (
+                <span key={attr} className={`text-[10px] px-1.5 py-0.5 rounded leading-none font-medium ${
+                  isParent
+                    ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                    : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300'
+                }`}>{attr}</span>
+              );
+            })}
+            {sortedAttrs.length > 2 && (
+              <span className="text-[10px] text-gray-400">+{sortedAttrs.length - 2}</span>
             )}
           </div>
         )}
@@ -59,18 +73,31 @@ function AssetCard({ asset, onDelete }: { asset: any; onDelete: (id: string) => 
 
 export default function AssetSidebar({ onClose }: { onClose: () => void }) {
   const [assets, setAssets] = useState<any[]>([]);
+  const [tagMeta, setTagMeta] = useState<Map<string, boolean>>(new Map());
   const [search, setSearch] = useState('');
 
+  const fetchAssetsAndMeta = async () => {
+    const { data } = await supabase.from('Assets').select('*').order('created_at', { ascending: false });
+    if (!data) return;
+    setAssets(data);
+    const typeIds = [...new Set(data.map((a: any) => a.item_type_id).filter(Boolean))];
+    if (typeIds.length === 0) return;
+    const { data: attrs } = await supabase.from('ItemTypeAttributes')
+      .select('item_type_id, name, is_parent')
+      .in('item_type_id', typeIds);
+    if (attrs) {
+      const map = new Map<string, boolean>();
+      attrs.forEach((a: any) => { if (a.is_parent) map.set(`${a.item_type_id}:${a.name}`, true); });
+      setTagMeta(map);
+    }
+  };
+
   useEffect(() => {
-    supabase.from('Assets').select('*').order('created_at', { ascending: false })
-      .then(({ data }) => { if (data) setAssets(data); });
+    fetchAssetsAndMeta();
 
     const channel = supabase
       .channel('assets-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'Assets' }, () => {
-        supabase.from('Assets').select('*').order('created_at', { ascending: false })
-          .then(({ data }) => { if (data) setAssets(data); });
-      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'Assets' }, fetchAssetsAndMeta)
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
@@ -78,8 +105,20 @@ export default function AssetSidebar({ onClose }: { onClose: () => void }) {
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this asset?')) return;
+    const asset = assets.find(a => a.id === id);
     await supabase.from('Assets').delete().eq('id', id);
     setAssets(prev => prev.filter(a => a.id !== id));
+    // Clean up the copied asset photo (only files in the assets/ subfolder)
+    if (asset?.photo_url) {
+      const marker = '/inventory_photos/';
+      const idx = asset.photo_url.indexOf(marker);
+      if (idx !== -1) {
+        const filePath = asset.photo_url.slice(idx + marker.length);
+        if (filePath.startsWith('assets/')) {
+          await supabase.storage.from('inventory_photos').remove([filePath]);
+        }
+      }
+    }
   };
 
   const filtered = search
@@ -127,7 +166,7 @@ export default function AssetSidebar({ onClose }: { onClose: () => void }) {
         ) : (
           <div className="grid grid-cols-2 gap-2">
             {filtered.map(asset => (
-              <AssetCard key={asset.id} asset={asset} onDelete={handleDelete} />
+              <AssetCard key={asset.id} asset={asset} onDelete={handleDelete} tagMeta={tagMeta} />
             ))}
           </div>
         )}

@@ -20,6 +20,9 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagInput, setNewTagInput] = useState('');
   const newTagInputRef = useRef<HTMLInputElement>(null);
+  const [isAddingGroup, setIsAddingGroup] = useState(false);
+  const [newGroupInput, setNewGroupInput] = useState('');
+  const newGroupInputRef = useRef<HTMLInputElement>(null);
 
   // Quantities & Qualities State
   const [isSplit, setIsSplit] = useState(false);
@@ -50,6 +53,12 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
       newTagInputRef.current.focus();
     }
   }, [isAddingTag]);
+
+  useEffect(() => {
+    if (isAddingGroup && newGroupInputRef.current) {
+      newGroupInputRef.current.focus();
+    }
+  }, [isAddingGroup]);
 
   useEffect(() => {
     if (typeSearch) {
@@ -102,62 +111,32 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
     }
   };
 
-  const toggleIsParent = async (tag: any) => {
-    const promoting = !tag.is_parent;
-    await supabase.from('ItemTypeAttributes').update({ is_parent: promoting }).eq('id', tag.id);
-
-    // When promoting a tag to parent, remove it from any items that already have
-    // a different parent selected — it was acting as a child detail on those items
-    if (promoting) {
-      const existingParentNames = availableTags
-        .filter((t: any) => t.is_parent && t.name !== tag.name)
-        .map((t: any) => t.name);
-      if (existingParentNames.length > 0) {
-        const { data: affected } = await supabase
-          .from('InventoryItems')
-          .select('id, attributes')
-          .eq('item_type_id', tag.item_type_id)
-          .contains('attributes', [tag.name]);
-        const toClean = (affected || []).filter((item: any) =>
-          existingParentNames.some(p => (item.attributes || []).includes(p))
-        );
-        await Promise.all(toClean.map((item: any) =>
-          supabase.from('InventoryItems')
-            .update({ attributes: item.attributes.filter((a: string) => a !== tag.name) })
-            .eq('id', item.id)
-        ));
-      }
-    }
-
-    fetchTagsForType(typeSearch);
+  const handleAddGroup = (name: string) => {
+    const cleanName = name.trim();
+    if (!cleanName) { setIsAddingGroup(false); return; }
+    // Track as group tag locally so display is correct and submit can persist with is_parent: true
+    const parentNamesSet = new Set([
+      ...availableTags.filter((t: any) => t.is_parent).map((t: any) => t.name),
+      cleanName,
+    ]);
+    setAvailableTags(prev =>
+      prev.some((t: any) => t.name.toLowerCase() === cleanName.toLowerCase() && t.is_parent)
+        ? prev
+        : [...prev.filter((t: any) => t.name.toLowerCase() !== cleanName.toLowerCase()), { name: cleanName, is_parent: true }]
+    );
+    setSelectedTags(prev => [...prev.filter(t => !parentNamesSet.has(t)), cleanName]);
+    setNewGroupInput('');
+    setIsAddingGroup(false);
   };
 
-  const commitTag = (value: string, keepOpen: boolean) => {
-    const cleanTag = value.trim();
-    if (cleanTag && !selectedTags.includes(cleanTag)) {
-      setSelectedTags(prev => [...prev, cleanTag]);
+  const handleAddNewTag = (name: string) => {
+    const cleanName = name.trim();
+    if (!cleanName) { setIsAddingTag(false); return; }
+    if (!selectedTags.includes(cleanName)) {
+      setSelectedTags(prev => [...prev, cleanName]);
     }
     setNewTagInput('');
-    if (keepOpen) {
-      // Keep the input mounted and focused so the user can type the next tag
-      newTagInputRef.current?.focus();
-    } else {
-      setIsAddingTag(false);
-    }
-  };
-
-  const handleAddNewTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' || e.key === 'Tab') {
-      e.preventDefault();
-      if (newTagInput.trim()) commitTag(newTagInput, false);
-      else setIsAddingTag(false);
-    } else if (e.key === ',') {
-      e.preventDefault();
-      if (newTagInput.trim()) commitTag(newTagInput, true);
-    } else if (e.key === 'Escape') {
-      setIsAddingTag(false);
-      setNewTagInput('');
-    }
+    setIsAddingTag(false);
   };
 
   // Autocomplete Tab selection
@@ -266,10 +245,11 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
 
       // 2. Insert any new tags for this Type
       for (const tagName of selectedTags) {
-         await supabase.from('ItemTypeAttributes').upsert(
-           { item_type_id: itemTypeId, name: tagName },
-           { onConflict: 'item_type_id,name' as any }
-         );
+        const isParent = availableTags.find((t: any) => t.name === tagName)?.is_parent ?? false;
+        await supabase.from('ItemTypeAttributes').upsert(
+          { item_type_id: itemTypeId, name: tagName, is_parent: isParent },
+          { onConflict: 'item_type_id,name' as any }
+        );
       }
 
       // 3. Insert InventoryItem
@@ -405,84 +385,99 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
 
             {/* Tags / Attributes */}
             <div>
-               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-1.5">
+               <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
                  <Tag size={16} className="text-gray-400"/> Attributes
                </label>
 
-               {/* Parent (grouping) tags — always visible, filled when selected */}
-               {availableTags.some((t: any) => t.is_parent) && (
-                 <div className="mb-2">
-                   <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1 block">Grouping (pick one)</span>
-                   <div className="flex flex-wrap gap-1.5 items-center">
-                     {availableTags.filter((t: any) => t.is_parent).map((tag: any) => {
-                       const isSelected = selectedTags.includes(tag.name);
-                       return (
-                         <div key={tag.id} className="flex items-center gap-0.5 group">
-                           <button type="button" onClick={() => toggleTag(tag.name)}
-                             className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors flex items-center gap-1 ${
-                               isSelected
-                                 ? 'bg-amber-500 border-amber-500 text-white dark:bg-amber-600 dark:border-amber-600'
-                                 : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400'
-                             }`}>
-                             {isSelected && <Check size={10} />}
-                             {tag.name}
-                           </button>
-                           <button type="button" onClick={() => toggleIsParent(tag)} title="Unmark as grouping"
-                             className="text-amber-400 hover:text-gray-400 opacity-0 group-hover:opacity-100 transition-all text-[10px] leading-none">★</button>
-                         </div>
-                       );
-                     })}
-                   </div>
-                 </div>
-               )}
-
-               {/* Child (detail) tags — gray, multi-select */}
-               <div className="flex flex-wrap gap-2 mb-3 items-center">
-                 {availableTags.filter((t: any) => !t.is_parent && !selectedTags.includes(t.name)).map((tag: any) => (
-                   <div key={tag.id} className="flex items-center gap-0.5 group">
-                     <button type="button" onClick={() => toggleTag(tag.name)}
-                       className="px-3 py-1.5 rounded-full text-xs font-medium border bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-800 transition-colors">
-                       {tag.name}
+               {/* Group Section (amber, radio — pick one) */}
+               <div className="flex items-start gap-2 mb-1.5">
+                 <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wider shrink-0 w-9 pt-1.5">Group</span>
+                 <div className="flex flex-wrap gap-1.5 items-center flex-1">
+                   {availableTags.filter((t: any) => t.is_parent).map((tag: any) => {
+                     const isSelected = selectedTags.includes(tag.name);
+                     return (
+                       <button key={tag.id ?? tag.name} type="button" onClick={() => toggleTag(tag.name)}
+                         className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors flex items-center gap-1 ${
+                           isSelected
+                             ? 'bg-amber-500 border-amber-500 text-white dark:bg-amber-600 dark:border-amber-600'
+                             : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400'
+                         }`}>
+                         {isSelected && <Check size={10} />}
+                         {tag.name}
+                       </button>
+                     );
+                   })}
+                   {isAddingGroup ? (
+                     <input
+                       ref={newGroupInputRef}
+                       value={newGroupInput}
+                       onChange={(e) => setNewGroupInput(e.target.value)}
+                       onKeyDown={(e) => {
+                         if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); handleAddGroup(newGroupInput); }
+                         else if (e.key === 'Escape') { setIsAddingGroup(false); setNewGroupInput(''); }
+                       }}
+                       onBlur={() => { setIsAddingGroup(false); setNewGroupInput(''); }}
+                       placeholder="New group name..."
+                       className="text-xs rounded-full border-amber-300 dark:border-amber-700 dark:bg-gray-900 bg-amber-50 focus:border-amber-500 focus:ring-amber-500/30 px-3 py-1 border outline-none transition-all w-40 shadow-sm"
+                     />
+                   ) : (
+                     <button type="button" onClick={() => setIsAddingGroup(true)}
+                       className="w-7 h-7 flex items-center justify-center rounded-full border border-dashed border-amber-300 dark:border-amber-700 text-amber-500 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
+                       title="Add group">+
                      </button>
-                     <button type="button" onClick={() => toggleIsParent(tag)} title="Mark as grouping"
-                       className="text-gray-300 hover:text-amber-400 opacity-0 group-hover:opacity-100 transition-all text-[10px] leading-none">★</button>
-                   </div>
-                 ))}
-
-                 {/* Add Tag Button / Input */}
-                 {isAddingTag ? (
-                   <input
-                     ref={newTagInputRef}
-                     value={newTagInput}
-                     onChange={(e) => setNewTagInput(e.target.value)}
-                     onKeyDown={handleAddNewTag}
-                     onBlur={() => setIsAddingTag(false)}
-                     placeholder="Type and press Enter..."
-                     className="text-xs rounded-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 bg-white focus:border-blue-500 focus:ring-blue-500/30 px-3 py-1.5 border outline-none transition-all w-48 shadow-sm"
-                   />
-                 ) : (
-                   <button type="button" onClick={() => setIsAddingTag(true)}
-                     className="w-7 h-7 flex items-center justify-center rounded-full border border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-blue-500 hover:border-blue-400 transition-colors"
-                     title="Add custom attribute">+
-                   </button>
-                 )}
+                   )}
+                 </div>
                </div>
 
-               {/* Selected Tags Box — child attrs only (parents shown above) */}
-               <div className="w-full min-h-[48px] p-2 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm flex flex-wrap gap-2 items-start">
-                  {selectedTags.filter(st => !availableTags.find((t: any) => t.name === st)?.is_parent).length === 0 ? (
-                    <span className="text-sm text-gray-400 p-1.5 italic">No detail attributes selected...</span>
-                  ) : (
-                    selectedTags
-                      .filter(st => !availableTags.find((t: any) => t.name === st)?.is_parent)
-                      .map(st => (
-                        <button key={st} type="button" onClick={() => toggleTag(st)}
-                          className="px-3 py-1.5 rounded-md text-xs font-medium bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-900/40 dark:border-blue-800 dark:text-blue-300 transition-colors flex items-center gap-1.5 group">
-                          {st}
-                          <span className="opacity-50 group-hover:opacity-100 group-hover:text-red-500 transition-all"><X size={12}/></span>
-                        </button>
-                      ))
-                  )}
+               {/* Tags Section (blue, multi-select) */}
+               <div className="flex items-start gap-2">
+                 <span className="text-[9px] font-bold text-blue-600 uppercase tracking-wider shrink-0 w-9 pt-1.5">Tags</span>
+                 <div className="flex-1">
+                 <div className="flex flex-wrap gap-1.5 mb-1 items-center">
+                   {availableTags.filter((t: any) => !t.is_parent && !selectedTags.includes(t.name)).map((tag: any) => (
+                     <button key={tag.id} type="button" onClick={() => toggleTag(tag.name)}
+                       className="px-3 py-1.5 rounded-full text-xs font-medium border bg-gray-50 border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-blue-900/20 transition-colors">
+                       {tag.name}
+                     </button>
+                   ))}
+                   {isAddingTag ? (
+                     <input
+                       ref={newTagInputRef}
+                       value={newTagInput}
+                       onChange={(e) => setNewTagInput(e.target.value)}
+                       onKeyDown={(e) => {
+                         if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); handleAddNewTag(newTagInput); }
+                         else if (e.key === 'Escape') { setIsAddingTag(false); setNewTagInput(''); }
+                       }}
+                       onBlur={() => setIsAddingTag(false)}
+                       placeholder="Type and press Enter..."
+                       className="text-xs rounded-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 bg-white focus:border-blue-500 focus:ring-blue-500/30 px-3 py-1.5 border outline-none transition-all w-48 shadow-sm"
+                     />
+                   ) : (
+                     <button type="button" onClick={() => setIsAddingTag(true)}
+                       className="w-7 h-7 flex items-center justify-center rounded-full border border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-blue-500 hover:border-blue-400 transition-colors"
+                       title="Add tag">+
+                     </button>
+                   )}
+                 </div>
+
+                 {/* Selected Tags Box */}
+                 <div className="w-full min-h-[36px] p-1.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm flex flex-wrap gap-1.5 items-start">
+                   {selectedTags.filter(st => !availableTags.find((t: any) => t.name === st)?.is_parent).length === 0 ? (
+                     <span className="text-xs text-gray-400 p-1 italic">No tags selected...</span>
+                   ) : (
+                     selectedTags
+                       .filter(st => !availableTags.find((t: any) => t.name === st)?.is_parent)
+                       .map(st => (
+                         <button key={st} type="button" onClick={() => toggleTag(st)}
+                           className="px-3 py-1 rounded-md text-xs font-medium bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-900/40 dark:border-blue-800 dark:text-blue-300 transition-colors flex items-center gap-1.5 group">
+                           {st}
+                           <span className="opacity-50 group-hover:opacity-100 group-hover:text-red-500 transition-all"><X size={12}/></span>
+                         </button>
+                       ))
+                   )}
+                 </div>
+                 </div>
                </div>
             </div>
             

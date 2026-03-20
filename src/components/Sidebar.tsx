@@ -68,8 +68,10 @@ export default function Sidebar() {
     setPhotos(prev => prev.filter(p => p.id !== id));
     await supabase.from('IncomingPhotos').delete().eq('id', id);
     if (photo?.photo_url) {
-      const fileName = photo.photo_url.split('/').pop();
-      if (fileName) await supabase.storage.from('inventory_photos').remove([fileName]);
+      const marker = '/inventory_photos/';
+      const idx = photo.photo_url.indexOf(marker);
+      const filePath = idx !== -1 ? photo.photo_url.slice(idx + marker.length) : photo.photo_url.split('/').pop();
+      if (filePath) await supabase.storage.from('inventory_photos').remove([filePath]);
     }
   };
 

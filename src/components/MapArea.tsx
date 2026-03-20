@@ -30,6 +30,9 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
   // tagMeta for spotlight-aware attribute color-coding in RoomZone popouts
   const [tagMeta, setTagMeta] = useState<Map<string, boolean>>(new Map());
 
+  // Incremented on background clicks to close all open room popouts
+  const [closeSignal, setCloseSignal] = useState(0);
+
   // PDF state
   const [numPages, setNumPages] = useState<number>(1);
   const [pageNumber, setPageNumber] = useState<number>(1);
@@ -40,6 +43,17 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
 
   useEffect(() => {
     fetchFloorPlans();
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Element;
+      if (!target.closest('[data-room-zone]') && !target.closest('[data-room-popout]')) {
+        setCloseSignal(s => s + 1);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, []);
 
   useEffect(() => {
@@ -377,6 +391,7 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
                         spotlightParent={activeSpotlightParent}
                         spotlightAttribute={activeSpotlightAttribute}
                         tagMeta={tagMeta}
+                        closeSignal={closeSignal}
                       />
                     ))}
 

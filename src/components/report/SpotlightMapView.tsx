@@ -19,7 +19,12 @@ export const SPOTLIGHT_COLORS = [
   '#8b5cf6', '#f97316', '#14b8a6', '#ec4899', '#84cc16',
 ];
 
-export interface ImageKeyEntry { label: string; photoUrl: string | null; count: number; }
+export interface ImageKeyEntry {
+  label: string;
+  photoUrl: string | null;
+  count: number;
+  attrs?: Array<{ name: string; isParent: boolean }>;
+}
 
 interface Props {
   floorPlan: any;
@@ -176,8 +181,32 @@ export default function SpotlightMapView({
                   <Package size={36} color="#94a3b8" />
                 </div>
               )}
-              <div style={{ textAlign: 'center', maxWidth: 130 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', lineHeight: 1.3 }}>{entry.label}</div>
+              <div style={{ textAlign: 'center', maxWidth: 144 }}>
+                {entry.attrs && entry.attrs.length > 0 ? (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 3, justifyContent: 'center', marginBottom: 2 }}>
+                    {entry.attrs.map((attr, ai) => (
+                      <span
+                        key={ai}
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          padding: '1px 6px',
+                          borderRadius: 4,
+                          lineHeight: 1.5,
+                          background: attr.isParent ? '#fffbeb' : '#eef2ff',
+                          color:      attr.isParent ? '#b45309' : '#4338ca',
+                          border:     attr.isParent ? '1px solid #fcd34d' : '1px solid #c7d2fe',
+                          WebkitPrintColorAdjust: 'exact',
+                          printColorAdjust: 'exact',
+                        } as React.CSSProperties}
+                      >
+                        {attr.name}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', lineHeight: 1.3 }}>{entry.label}</div>
+                )}
                 <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>{entry.count} total</div>
               </div>
             </div>

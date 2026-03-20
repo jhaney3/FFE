@@ -17,6 +17,22 @@ export default function AssetDropModal({ asset, room, onClose, onSaved }: {
   const [splitQty, setSplitQty] = useState({ Excellent: 0, Good: 1, Fair: 0, Poor: 0 });
   const [notes, setNotes] = useState(asset.notes || '');
   const [loading, setLoading] = useState(false);
+  const [tagMeta, setTagMeta] = useState<Map<string, boolean>>(new Map());
+
+  useEffect(() => {
+    if (asset.item_type_id) {
+      supabase.from('ItemTypeAttributes')
+        .select('name, is_parent')
+        .eq('item_type_id', asset.item_type_id)
+        .then(({ data }) => {
+          if (data) {
+            const map = new Map<string, boolean>();
+            data.forEach((a: any) => { if (a.is_parent) map.set(`${asset.item_type_id}:${a.name}`, true); });
+            setTagMeta(map);
+          }
+        });
+    }
+  }, [asset.item_type_id]);
 
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -113,9 +129,21 @@ export default function AssetDropModal({ asset, room, onClose, onSaved }: {
               <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{asset.name}</p>
               {asset.attributes?.length > 0 && (
                 <div className="flex flex-wrap gap-1 mt-1">
-                  {asset.attributes.map((a: string) => (
-                    <span key={a} className="text-[10px] px-1.5 py-0.5 rounded bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300 leading-none">{a}</span>
-                  ))}
+                  {[...asset.attributes].sort((a: string, b: string) => {
+                    const aP = tagMeta.get(`${asset.item_type_id}:${a}`) ?? false;
+                    const bP = tagMeta.get(`${asset.item_type_id}:${b}`) ?? false;
+                    if (aP !== bP) return aP ? -1 : 1;
+                    return a.localeCompare(b);
+                  }).map((a: string) => {
+                    const isParent = tagMeta.get(`${asset.item_type_id}:${a}`) ?? false;
+                    return (
+                      <span key={a} className={`text-[10px] px-1.5 py-0.5 rounded leading-none font-medium ${
+                        isParent
+                          ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
+                          : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300'
+                      }`}>{a}</span>
+                    );
+                  })}
                 </div>
               )}
             </div>

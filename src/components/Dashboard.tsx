@@ -362,9 +362,14 @@ export default function Dashboard() {
                         {item.attributes?.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1.5">
                             {(() => {
-                              const firstParent = item.attributes.find((a: string) => tagMeta.get(`${item.item_type_id}:${a}`));
-                              return item.attributes.map((tag: string, i: number) => {
-                                const isParent = tag === firstParent;
+                              const sorted = [...item.attributes].sort((a: string, b: string) => {
+                                const aP = tagMeta.get(`${item.item_type_id}:${a}`) ?? false;
+                                const bP = tagMeta.get(`${item.item_type_id}:${b}`) ?? false;
+                                if (aP !== bP) return aP ? -1 : 1;
+                                return a.localeCompare(b);
+                              });
+                              return sorted.map((tag: string, i: number) => {
+                                const isParent = tagMeta.get(`${item.item_type_id}:${tag}`) ?? false;
                                 return (
                                   <span key={i} className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded-sm ${
                                     isParent

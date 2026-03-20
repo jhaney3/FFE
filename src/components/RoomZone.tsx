@@ -52,7 +52,7 @@ function getRoomColor(roomType?: string): string {
 
 type Corner = 'tl' | 'tr' | 'bl' | 'br';
 
-export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDeleteZone, onEditZone, onUpdateZone, onItemDeleted, spotlightType, spotlightParent, spotlightAttribute, tagMeta }: {
+export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDeleteZone, onEditZone, onUpdateZone, onItemDeleted, spotlightType, spotlightParent, spotlightAttribute, tagMeta, closeSignal }: {
   room: any;
   items?: any[];
   activeAdmin: boolean;
@@ -65,6 +65,7 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
   spotlightParent?: string | null;
   spotlightAttribute?: string | null;
   tagMeta?: Map<string, boolean>;
+  closeSignal?: number;
 }) {
   const [isHovered, setIsHovered]         = useState(false);
   const [isOpen, setIsOpen]               = useState(false);
@@ -104,6 +105,11 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
   useEffect(() => {
     liveCoords.current = { x: coords.x, y: coords.y, width: coords.width, height: coords.height };
   }, [coords.x, coords.y, coords.width, coords.height]);
+
+  // Close popout when parent signals a background click
+  useEffect(() => {
+    if (closeSignal) setIsOpen(false);
+  }, [closeSignal]);
 
   // ── Pill label measurement ─────────────────────────────────────────────────
 
@@ -339,6 +345,7 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
   return (
     <div
       ref={combinedRef}
+      data-room-zone
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       // Stop map from starting a new-zone draw when clicking an existing zone in admin mode
@@ -491,6 +498,7 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
 
           <div
             ref={popoutRef}
+            data-room-popout
             style={{ position: 'fixed', left: pos.current.left, top: pos.current.top, width: size.current.width, zIndex: 9999 }}
             className="ffe-popout bg-black/85 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col select-none overflow-hidden"
             onClick={(e) => e.stopPropagation()}
@@ -540,9 +548,13 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
                         {item.qty_fair      > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-yellow-400"/><span className="text-[11px] font-bold text-yellow-400">{item.qty_fair}     </span><span className="text-[10px] text-yellow-400/60">Fair</span></span>}
                         {item.qty_poor      > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-red-400"   /><span className="text-[11px] font-bold text-red-400"  >{item.qty_poor}     </span><span className="text-[10px] text-red-400/60"  >Poor</span></span>}
                         {item.attributes?.length > 0 && <span className="ffe-attr w-px h-3 bg-white/15 shrink-0 mx-0.5" />}
-                        {item.attributes?.map((tag: string) => {
-                          const firstParent = item.attributes.find((a: string) => tagMeta?.get(`${item.item_type_id}:${a}`));
-                          const isParent = tag === firstParent;
+                        {[...(item.attributes ?? [])].sort((a: string, b: string) => {
+                          const aP = tagMeta?.get(`${item.item_type_id}:${a}`) ?? false;
+                          const bP = tagMeta?.get(`${item.item_type_id}:${b}`) ?? false;
+                          if (aP !== bP) return aP ? -1 : 1;
+                          return a.localeCompare(b);
+                        }).map((tag: string) => {
+                          const isParent = tagMeta?.get(`${item.item_type_id}:${tag}`) ?? false;
                           return (
                             <span key={tag} className={`ffe-attr text-[10px] px-1.5 py-0.5 rounded shrink-0 leading-none ${
                               isParent
@@ -556,7 +568,7 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
                     </div>
                     <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
                       <button onClick={() => setEditingItem(item)} className="p-1.5 rounded-md text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-colors" title="Edit item"><Pencil size={13} /></button>
-                      <button onClick={() => handleDeleteItem(item.id, item.photo_url)} className="p-1.5 rounded-md text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Move back to triage queue"><Trash2 size={13} /></button>
+                      <button onClick={() => handleDeleteItem(item.id, item.photo_url)} className="p-1.5 rounded-md text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Remove from room"><Trash2 size={13} /></button>
                     </div>
                   </div>
                 )) : (

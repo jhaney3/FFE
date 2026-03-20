@@ -86,10 +86,19 @@ function ReportContent() {
         if (roomList.length > 0) {
           const { data: roomItems } = await supabase
             .from('InventoryItems')
-            .select('room_id, photo_url, attributes, qty_excellent, qty_good, qty_fair, qty_poor, ItemTypes(name)')
+            .select('room_id, item_type_id, photo_url, attributes, qty_excellent, qty_good, qty_fair, qty_poor, ItemTypes(name)')
             .in('room_id', roomList.map((r: any) => r.id));
 
           const allItems: any[] = roomItems || [];
+
+          // Build tagMeta for group vs tag distinction
+          const typeIds = [...new Set(allItems.map((i: any) => i.item_type_id).filter(Boolean))];
+          const tagMeta = new Map<string, boolean>();
+          if (typeIds.length > 0) {
+            const { data: tagData } = await supabase.from('ItemTypeAttributes')
+              .select('item_type_id, name').in('item_type_id', typeIds).eq('is_parent', true);
+            (tagData || []).forEach((t: any) => tagMeta.set(`${t.item_type_id}:${t.name}`, true));
+          }
 
           // Active room IDs
           if (spotlightType) {
@@ -130,7 +139,13 @@ function ReportContent() {
 
             // imageKey
             if (!keyMap.has(label)) {
-              keyMap.set(label, { label, photoUrl: item.photo_url || null, count: qty });
+              const sortedAttrObjs = [...(item.attributes || [])].sort((a: string, b: string) => {
+                const aP = tagMeta.get(`${item.item_type_id}:${a}`) ?? false;
+                const bP = tagMeta.get(`${item.item_type_id}:${b}`) ?? false;
+                if (aP !== bP) return aP ? -1 : 1;
+                return a.localeCompare(b);
+              }).map((name: string) => ({ name, isParent: tagMeta.get(`${item.item_type_id}:${name}`) ?? false }));
+              keyMap.set(label, { label, photoUrl: item.photo_url || null, count: qty, attrs: sortedAttrObjs });
             } else {
               const e = keyMap.get(label)!;
               e.count += qty;
