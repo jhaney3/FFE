@@ -22,12 +22,16 @@ export default function EditItemModal({ item, onClose, onSaved }: {
   // Tags State
   const [availableTags, setAvailableTags] = useState<any[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>(item.attributes || []);
+  const [tagSearch, setTagSearch] = useState('');
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagInput, setNewTagInput] = useState('');
   const newTagInputRef = useRef<HTMLInputElement>(null);
   const [isAddingGroup, setIsAddingGroup] = useState(false);
   const [newGroupInput, setNewGroupInput] = useState('');
   const newGroupInputRef = useRef<HTMLInputElement>(null);
+
+  const [matchedAsset, setMatchedAsset] = useState<any>(null);
+  const [pendingTypeId, setPendingTypeId] = useState<string | null>(null);
 
   // Quantities & Qualities State — derive from saved data
   const [isSplit, setIsSplit] = useState(false);
@@ -85,12 +89,33 @@ export default function EditItemModal({ item, onClose, onSaved }: {
   }, [isAddingGroup]);
 
   useEffect(() => {
+    setTagSearch('');
     if (typeSearch) {
       fetchTagsForType(typeSearch);
     } else {
       setAvailableTags([]);
     }
   }, [typeSearch, itemTypes]);
+
+  // Reactively check for a matching asset as type/attributes change
+  useEffect(() => {
+    setMatchedAsset(null);
+    setPendingTypeId(null);
+    const existingType = itemTypes.find(t => t.name.toLowerCase() === typeSearch.toLowerCase());
+    if (!existingType || selectedTags.length === 0) return;
+    const sorted = [...selectedTags].sort();
+    const timer = setTimeout(async () => {
+      const { data: assets } = await supabase.from('Assets').select('*').eq('item_type_id', existingType.id);
+      const match = assets?.find(a =>
+        JSON.stringify([...(a.attributes || [])].sort()) === JSON.stringify(sorted)
+      );
+      if (match) {
+        setPendingTypeId(existingType.id);
+        setMatchedAsset(match);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [typeSearch, selectedTags, itemTypes]);
 
   const fetchTypes = async () => {
     const { data } = await supabase.from('ItemTypes').select('*').order('name');
@@ -214,6 +239,7 @@ export default function EditItemModal({ item, onClose, onSaved }: {
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (matchedAsset) return;
     if (!typeSearch.trim()) return alert('Please enter an Item Type');
     if (isSplit && currentSplitTotal !== totalQuantity) {
       return alert(`Split quantities (${currentSplitTotal}) must equal Total Quantity (${totalQuantity}).`);
@@ -389,11 +415,20 @@ export default function EditItemModal({ item, onClose, onSaved }: {
                 <Tag size={16} className="text-gray-400" /> Attributes
               </label>
 
+              {availableTags.length > 5 && (
+                <input
+                  value={tagSearch}
+                  onChange={(e) => setTagSearch(e.target.value)}
+                  placeholder="Filter attributes..."
+                  className="w-full mb-2 px-3 py-1.5 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg outline-none focus:border-indigo-400 transition-colors"
+                />
+              )}
+
               {/* Group Section (amber, radio — pick one) */}
               <div className="flex items-start gap-2 mb-1.5">
                 <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wider shrink-0 w-9 pt-1.5">Group</span>
                 <div className="flex flex-wrap gap-1.5 items-center flex-1">
-                  {availableTags.filter((t: any) => t.is_parent).map((tag: any) => {
+                  {availableTags.filter((t: any) => t.is_parent && (!tagSearch || t.name.toLowerCase().includes(tagSearch.toLowerCase()))).map((tag: any) => {
                     const isSelected = selectedTags.includes(tag.name);
                     return (
                       <button key={tag.id ?? tag.name} type="button" onClick={() => toggleTag(tag.name)}
@@ -434,7 +469,7 @@ export default function EditItemModal({ item, onClose, onSaved }: {
                 <span className="text-[9px] font-bold text-blue-600 uppercase tracking-wider shrink-0 w-9 pt-1.5">Tags</span>
                 <div className="flex-1">
                 <div className="flex flex-wrap gap-1.5 mb-1 items-center">
-                  {availableTags.filter((t: any) => !t.is_parent && !selectedTags.includes(t.name)).map((tag: any) => (
+                  {availableTags.filter((t: any) => !t.is_parent && !selectedTags.includes(t.name) && (!tagSearch || t.name.toLowerCase().includes(tagSearch.toLowerCase()))).map((tag: any) => (
                     <button key={tag.id} type="button" onClick={() => toggleTag(tag.name)}
                       className="px-3 py-1.5 rounded-full text-xs font-medium border bg-gray-50 border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-blue-900/20 transition-colors">
                       {tag.name}
@@ -584,6 +619,103 @@ export default function EditItemModal({ item, onClose, onSaved }: {
               />
             </div>
 
+            {/* Matched asset warning */}
+            {matchedAsset && (
+              <div className="rounded-xl border border-amber-300 dark:border-amber-700 overflow-hidden">
+                <div className="flex min-h-[120px]">
+                  <div className="w-32 shrink-0 relative bg-amber-100 dark:bg-amber-900/30">
+                    {matchedAsset.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={matchedAsset.photo_url} alt={matchedAsset.name} className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Package size={28} className="text-amber-400" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex-1 bg-amber-50 dark:bg-amber-900/20 p-4 flex flex-col gap-3 min-w-0">
+                    <div>
+                      <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">Existing asset matches</p>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{matchedAsset.name}</p>
+                      {matchedAsset.attributes?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {[...matchedAsset.attributes].sort((a: string, b: string) => {
+                            const aP = availableTags.find((t: any) => t.name === a)?.is_parent ?? false;
+                            const bP = availableTags.find((t: any) => t.name === b)?.is_parent ?? false;
+                            if (aP !== bP) return aP ? -1 : 1;
+                            return a.localeCompare(b);
+                          }).map((a: string) => {
+                            const isParent = availableTags.find((t: any) => t.name === a)?.is_parent ?? false;
+                            return (
+                              <span key={a} className={`text-[10px] px-1.5 py-0.5 rounded leading-none font-medium ${
+                                isParent
+                                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400'
+                                  : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300'
+                              }`}>{a}</span>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-amber-700 dark:text-amber-400">Would you like to use this asset instead?</p>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setLoading(true);
+                          try {
+                            const oldPhotoUrl = item.photo_url;
+                            // Update item with asset identity + current form quantities/notes
+                            const { error } = await supabase.from('InventoryItems').update({
+                              photo_url:     matchedAsset.photo_url,
+                              item_type_id:  matchedAsset.item_type_id,
+                              attributes:    matchedAsset.attributes || [],
+                              qty_excellent: isSplit ? splitQty.Excellent : (globalQuality === 'Excellent' ? totalQuantity : 0),
+                              qty_good:      isSplit ? splitQty.Good      : (globalQuality === 'Good'      ? totalQuantity : 0),
+                              qty_fair:      isSplit ? splitQty.Fair      : (globalQuality === 'Fair'      ? totalQuantity : 0),
+                              qty_poor:      isSplit ? splitQty.Poor      : (globalQuality === 'Poor'      ? totalQuantity : 0),
+                              notes:         notes.trim(),
+                            }).eq('id', item.id);
+                            if (error) throw error;
+                            // Delete old photo from storage if it wasn't already an asset photo
+                            if (oldPhotoUrl) {
+                              const marker = '/inventory_photos/';
+                              const idx = oldPhotoUrl.indexOf(marker);
+                              const filePath = idx !== -1 ? oldPhotoUrl.slice(idx + marker.length) : null;
+                              if (filePath && !filePath.startsWith('assets/')) {
+                                const { count } = await supabase
+                                  .from('InventoryItems')
+                                  .select('id', { count: 'exact', head: true })
+                                  .eq('photo_url', oldPhotoUrl);
+                                if ((count ?? 1) === 0) {
+                                  await supabase.storage.from('inventory_photos').remove([filePath]);
+                                }
+                              }
+                            }
+                            onSaved();
+                            onClose();
+                          } catch (err: any) {
+                            alert(err.message);
+                            setLoading(false);
+                          }
+                        }}
+                        className="flex-1 py-2 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+                      >
+                        Use Asset
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMatchedAsset(null)}
+                        className="flex-1 py-2 text-xs font-semibold rounded-lg border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+                      >
+                        Keep My Image
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Save as asset toggle */}
             <div className="pt-2 mt-auto border-t border-gray-100 dark:border-gray-800">
               <button
@@ -603,7 +735,7 @@ export default function EditItemModal({ item, onClose, onSaved }: {
               </button>
 
               <button
-                disabled={loading || (isSplit && currentSplitTotal !== totalQuantity)}
+                disabled={loading || (isSplit && currentSplitTotal !== totalQuantity) || !!matchedAsset}
                 type="submit"
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md flex justify-center items-center gap-2 transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed"
               >
