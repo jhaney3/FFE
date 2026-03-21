@@ -301,7 +301,7 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
     setAssetLoading(true);
     try {
       const chosenItem = savedItems.find(i => i.id === selectedPhotoItemId);
-      await saveAssetIfNew({
+      const result = await saveAssetIfNew({
         name:         postSaveTypeName,
         item_type_id: postSaveTypeId!,
         photo_url:    chosenItem?.photo_url ?? null,
@@ -309,16 +309,18 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
         notes:        '',
       });
 
-      // Get the newly created asset's photo_url for replacement
-      const { data: newAsset } = await supabase
-        .from('Assets')
-        .select('photo_url')
-        .eq('item_type_id', postSaveTypeId!)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+      const assetPhotoUrl = result.assetPhotoUrl;
 
-      await handlePhotoCleanup(newAsset?.photo_url ?? null, selectedPhotoItemId);
+      // Update all other items (deletes their root photos, points them at asset photo)
+      await handlePhotoCleanup(assetPhotoUrl, selectedPhotoItemId);
+
+      // Also update the representative item itself to the assets/ path
+      if (selectedPhotoItemId && assetPhotoUrl) {
+        await supabase.from('InventoryItems')
+          .update({ photo_url: assetPhotoUrl })
+          .eq('id', selectedPhotoItemId);
+      }
+
       onSaved();
       onClose();
     } catch (err: any) {
