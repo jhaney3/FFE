@@ -106,15 +106,7 @@ export default function SpotlightMapView({
     if (badges.length > 0) roomBadgeMap.set(room.id, badges);
   });
 
-  // Endpoint dot colors per room (one dot per combo color that connects to it)
-  const roomDotColors = new Map<string, string[]>();
-  imageKey.forEach((entry, i) => {
-    const color = SPOTLIGHT_COLORS[i % SPOTLIGHT_COLORS.length];
-    (mapComboRooms[entry.label] || []).forEach(roomId => {
-      if (!roomDotColors.has(roomId)) roomDotColors.set(roomId, []);
-      if (!roomDotColors.get(roomId)!.includes(color)) roomDotColors.get(roomId)!.push(color);
-    });
-  });
+  const ARC_R = 1.8; // spread radius as % of fpWrapRef container
 
   return (
     <div ref={outerRef} style={{ position: 'relative' }}>
@@ -122,7 +114,6 @@ export default function SpotlightMapView({
       {/* ── SVG connecting lines ─────────────────────────────────────────────
           viewBox="0 0 100 100" + preserveAspectRatio="none":
           All coords are %-of-container, so no re-measurement needed at print time.
-          Endpoint dots are HTML elements inside fpWrapRef (CSS % = print-stable).
       ─────────────────────────────────────────────────────────────────────── */}
       <svg
         aria-hidden="true"
@@ -214,7 +205,7 @@ export default function SpotlightMapView({
         })}
       </div>
 
-      {/* ── Annotated floor plan + endpoint dots + per-combo count badges ── */}
+      {/* ── Annotated floor plan + arc-spread per-combo badges ── */}
       <div ref={fpWrapRef} style={{ position: 'relative' }}>
         <FloorPlanAnnotated
           floorPlan={floorPlan}
@@ -225,69 +216,54 @@ export default function SpotlightMapView({
 
         {pageRooms
           .filter(r => activeRoomIds.has(r.id) && r.map_coordinates && roomBadgeMap.has(r.id))
-          .map(room => {
+          .flatMap(room => {
             const { x, y, width, height } = room.map_coordinates;
-            const badges    = roomBadgeMap.get(room.id)!;
-            const dotColors = roomDotColors.get(room.id) || [];
-            return (
-              <div
-                key={room.id}
-                style={{
-                  position: 'absolute',
-                  left: `${x + width  / 2}%`,
-                  top:  `${y + height / 2}%`,
-                  transform: 'translate(-50%, -50%)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: 3,
-                  pointerEvents: 'none',
-                  zIndex: 20,
-                }}
-              >
-                {/* Endpoint dots — CSS % positioned inside fpWrapRef, always print-accurate */}
-                {dotColors.length > 0 && (
-                  <div style={{ display: 'flex', gap: 3 }}>
-                    {dotColors.map((color, ci) => (
-                      <div
-                        key={ci}
-                        style={{
-                          width: 10,
-                          height: 10,
-                          borderRadius: '50%',
-                          background: color,
-                          border: '1.5px solid white',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
-                          WebkitPrintColorAdjust: 'exact',
-                          printColorAdjust: 'exact',
-                        } as React.CSSProperties}
-                      />
-                    ))}
-                  </div>
-                )}
-                {badges.map((badge, bi) => (
-                  <div
-                    key={bi}
-                    style={{
-                      background: badge.color,
-                      color: 'white',
-                      borderRadius: 999,
-                      padding: '1px 7px',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      lineHeight: 1.5,
-                      boxShadow: '0 1px 4px rgba(0,0,0,0.3)',
-                      border: '1.5px solid white',
-                      whiteSpace: 'nowrap',
-                      WebkitPrintColorAdjust: 'exact',
-                      printColorAdjust: 'exact',
-                    } as React.CSSProperties}
-                  >
-                    {badge.count}
-                  </div>
-                ))}
-              </div>
-            );
+            const cx     = x + width  / 2;
+            const cy     = y + height / 2;
+            const badges = roomBadgeMap.get(room.id)!;
+            const spread = badges.length > 1 ? ARC_R : 0;
+
+            return badges.map((badge, bi) => {
+              const angle = badges.length === 1
+                ? 0
+                : (bi / badges.length) * 2 * Math.PI - Math.PI / 2;
+              return (
+                <div
+                  key={`${room.id}-${bi}`}
+                  style={{
+                    position: 'absolute',
+                    left: `${cx + spread * Math.cos(angle)}%`,
+                    top:  `${cy + spread * Math.sin(angle)}%`,
+                    transform: 'translate(-50%, -50%)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 3,
+                    background: 'white',
+                    border: `1.5px solid ${badge.color}`,
+                    borderRadius: 999,
+                    padding: '1px 5px 1px 3px',
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: '#1e293b',
+                    lineHeight: 1.5,
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                    whiteSpace: 'nowrap',
+                    pointerEvents: 'none',
+                    zIndex: 20,
+                    WebkitPrintColorAdjust: 'exact',
+                    printColorAdjust: 'exact',
+                  } as React.CSSProperties}
+                >
+                  <div style={{
+                    width: 7, height: 7, borderRadius: '50%',
+                    background: badge.color, flexShrink: 0,
+                    WebkitPrintColorAdjust: 'exact',
+                    printColorAdjust: 'exact',
+                  } as React.CSSProperties} />
+                  {badge.count}
+                </div>
+              );
+            });
           })
         }
       </div>
