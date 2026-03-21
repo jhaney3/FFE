@@ -138,7 +138,7 @@ function ReportContent() {
             // When spotlighting a type without pinning to a specific combo, group by parent
             // attribute so the key shows one entry per group (e.g. 5 groups → 5 images),
             // not one entry per unique full-combo (which could be dozens).
-            const groupByParent = !!spotlightType && !spotlightAttr;
+            const groupByParent = !!spotlightType && !spotlightAttr && !spotlightParent;
             const parentAttr = groupByParent
               ? ((item.attributes || []).find((a: string) => tagMeta.get(`${item.item_type_id}:${a}`)) ?? null)
               : null;
