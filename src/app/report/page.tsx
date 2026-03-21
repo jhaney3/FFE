@@ -135,24 +135,40 @@ function ReportContent() {
             if (!spotlightAttr && spotlightParent && !(item.attributes || []).includes(spotlightParent)) continue;
             const qty = (item.qty_excellent || 0) + (item.qty_good || 0) + (item.qty_fair || 0) + (item.qty_poor || 0);
 
-            const label = spotlightType ? combo : `${typeName} — ${combo}`;
+            // When spotlighting a type without pinning to a specific combo, group by parent
+            // attribute so the key shows one entry per group (e.g. 5 groups → 5 images),
+            // not one entry per unique full-combo (which could be dozens).
+            const groupByParent = !!spotlightType && !spotlightAttr;
+            const parentAttr = groupByParent
+              ? ((item.attributes || []).find((a: string) => tagMeta.get(`${item.item_type_id}:${a}`)) ?? null)
+              : null;
+            const label = groupByParent
+              ? (parentAttr ?? '(ungrouped)')
+              : spotlightType ? combo : `${typeName} — ${combo}`;
 
             // imageKey
             if (!keyMap.has(label)) {
-              const sortedAttrObjs = [...(item.attributes || [])].sort((a: string, b: string) => {
-                const aP = tagMeta.get(`${item.item_type_id}:${a}`) ?? false;
-                const bP = tagMeta.get(`${item.item_type_id}:${b}`) ?? false;
-                if (aP !== bP) return aP ? -1 : 1;
-                return a.localeCompare(b);
-              }).map((name: string) => ({ name, isParent: tagMeta.get(`${item.item_type_id}:${name}`) ?? false }));
-              keyMap.set(label, { label, photoUrl: item.photo_url || null, count: qty, attrs: sortedAttrObjs });
+              const keyAttrs = groupByParent
+                ? (parentAttr ? [{ name: parentAttr, isParent: true }] : [])
+                : [...(item.attributes || [])].sort((a: string, b: string) => {
+                    const aP = tagMeta.get(`${item.item_type_id}:${a}`) ?? false;
+                    const bP = tagMeta.get(`${item.item_type_id}:${b}`) ?? false;
+                    if (aP !== bP) return aP ? -1 : 1;
+                    return a.localeCompare(b);
+                  }).map((name: string) => ({ name, isParent: tagMeta.get(`${item.item_type_id}:${name}`) ?? false }));
+              keyMap.set(label, { label, photoUrl: item.photo_url || null, count: qty, attrs: keyAttrs });
             } else {
               const e = keyMap.get(label)!;
               e.count += qty;
-              if (!e.photoUrl && item.photo_url) e.photoUrl = item.photo_url;
+              // Prefer asset photos as the representative image
+              if (!e.photoUrl && item.photo_url) {
+                e.photoUrl = item.photo_url;
+              } else if (item.photo_url?.includes('/assets/') && !e.photoUrl?.includes('/assets/')) {
+                e.photoUrl = item.photo_url;
+              }
             }
 
-            // combo → rooms + per-room counts (spotlight only, non-zero qty)
+            // label → rooms + per-room counts (spotlight only, non-zero qty)
             if (spotlightType && qty > 0) {
               if (!comboRooms[label]) comboRooms[label] = [];
               if (!comboRooms[label].includes(item.room_id)) comboRooms[label].push(item.room_id);
