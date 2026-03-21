@@ -17,6 +17,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
   // Tags State
   const [availableTags, setAvailableTags] = useState<any[]>([]);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [tagSearch, setTagSearch] = useState('');
   const [isAddingTag, setIsAddingTag] = useState(false);
   const [newTagInput, setNewTagInput] = useState('');
   const newTagInputRef = useRef<HTMLInputElement>(null);
@@ -63,6 +64,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
   }, [isAddingGroup]);
 
   useEffect(() => {
+    setTagSearch('');
     if (typeSearch) {
       fetchTagsForType(typeSearch);
     } else {
@@ -443,11 +445,21 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
                  <Tag size={16} className="text-gray-400"/> Attributes
                </label>
 
+               {/* Tag search — only shown when there are enough tags to warrant it */}
+               {availableTags.length > 5 && (
+                 <input
+                   value={tagSearch}
+                   onChange={(e) => setTagSearch(e.target.value)}
+                   placeholder="Filter attributes..."
+                   className="w-full mb-2 px-3 py-1.5 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg outline-none focus:border-indigo-400 transition-colors"
+                 />
+               )}
+
                {/* Group Section (amber, radio — pick one) */}
                <div className="flex items-start gap-2 mb-1.5">
                  <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wider shrink-0 w-9 pt-1.5">Group</span>
                  <div className="flex flex-wrap gap-1.5 items-center flex-1">
-                   {availableTags.filter((t: any) => t.is_parent).map((tag: any) => {
+                   {availableTags.filter((t: any) => t.is_parent && (!tagSearch || t.name.toLowerCase().includes(tagSearch.toLowerCase()))).map((tag: any) => {
                      const isSelected = selectedTags.includes(tag.name);
                      return (
                        <button key={tag.id ?? tag.name} type="button" onClick={() => toggleTag(tag.name)}
@@ -488,7 +500,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
                  <span className="text-[9px] font-bold text-blue-600 uppercase tracking-wider shrink-0 w-9 pt-1.5">Tags</span>
                  <div className="flex-1">
                  <div className="flex flex-wrap gap-1.5 mb-1 items-center">
-                   {availableTags.filter((t: any) => !t.is_parent && !selectedTags.includes(t.name)).map((tag: any) => (
+                   {availableTags.filter((t: any) => !t.is_parent && !selectedTags.includes(t.name) && (!tagSearch || t.name.toLowerCase().includes(tagSearch.toLowerCase()))).map((tag: any) => (
                      <button key={tag.id} type="button" onClick={() => toggleTag(tag.name)}
                        className="px-3 py-1.5 rounded-full text-xs font-medium border bg-gray-50 border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-blue-900/20 transition-colors">
                        {tag.name}
