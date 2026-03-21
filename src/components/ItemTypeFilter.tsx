@@ -80,7 +80,7 @@ export default function ItemTypeFilter({
         ? (attrs.find(a => tagMeta.get(`${item.item_type_id}:${a}`)) || '(ungrouped)')
         : '(flat)'; // sentinel: no parent level
 
-      const fullCombo = attrs.length > 0 ? attrs.join(', ') : '(no attributes)';
+      const fullCombo = attrs.length > 0 ? [...attrs].sort().join(', ') : '(no attributes)';
 
       if (!te.parentGroups.has(parentAttr)) te.parentGroups.set(parentAttr, { total: 0, combos: new Map() });
       const pg = te.parentGroups.get(parentAttr)!;

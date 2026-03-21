@@ -107,7 +107,7 @@ function ReportContent() {
                 .filter(item => {
                   if (item.ItemTypes?.name !== spotlightType) return false;
                   if (spotlightAttr) {
-                    const combo = item.attributes?.length > 0 ? item.attributes.join(', ') : '(no attributes)';
+                    const combo = item.attributes?.length > 0 ? [...item.attributes].sort().join(', ') : '(no attributes)';
                     if (combo !== spotlightAttr) return false;
                   } else if (spotlightParent) {
                     if (!(item.attributes || []).includes(spotlightParent)) return false;
@@ -130,7 +130,7 @@ function ReportContent() {
             const typeName = item.ItemTypes?.name;
             if (!typeName) continue;
             if (spotlightType && typeName !== spotlightType) continue;
-            const combo = item.attributes?.length > 0 ? item.attributes.join(', ') : '(no attributes)';
+            const combo = item.attributes?.length > 0 ? [...item.attributes].sort().join(', ') : '(no attributes)';
             if (spotlightAttr && combo !== spotlightAttr) continue;
             if (!spotlightAttr && spotlightParent && !(item.attributes || []).includes(spotlightParent)) continue;
             const qty = (item.qty_excellent || 0) + (item.qty_good || 0) + (item.qty_fair || 0) + (item.qty_poor || 0);

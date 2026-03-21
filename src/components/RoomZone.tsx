@@ -346,7 +346,7 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
         if (item.ItemTypes?.name !== spotlightType) return sum;
         if (spotlightAttribute) {
           // Full combo match (e.g. "Adult, Black")
-          const combo = item.attributes?.length > 0 ? item.attributes.join(', ') : '(no attributes)';
+          const combo = item.attributes?.length > 0 ? [...item.attributes].sort().join(', ') : '(no attributes)';
           if (combo !== spotlightAttribute) return sum;
         } else if (spotlightParent) {
           // Parent-only match — item must have the parent attribute anywhere in its array
