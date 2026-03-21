@@ -34,7 +34,7 @@ export async function saveAssetIfNew({
   photo_url?: string | null;
   attributes: string[];
   notes?: string;
-}): Promise<'saved' | 'duplicate'> {
+}): Promise<{ status: 'saved'; assetPhotoUrl: string | null } | { status: 'duplicate'; assetPhotoUrl: null }> {
   const sorted = [...attributes].sort();
 
   // Fetch existing assets with the same type for this user
@@ -48,7 +48,7 @@ export async function saveAssetIfNew({
       const other = [...(a.attributes || [])].sort();
       return JSON.stringify(sorted) === JSON.stringify(other);
     });
-    if (isDuplicate) return 'duplicate';
+    if (isDuplicate) return { status: 'duplicate', assetPhotoUrl: null };
   }
 
   // Copy the photo into the assets/ subfolder so it has an independent lifecycle
@@ -64,5 +64,5 @@ export async function saveAssetIfNew({
     notes: notes || '',
   }]);
 
-  return 'saved';
+  return { status: 'saved', assetPhotoUrl };
 }

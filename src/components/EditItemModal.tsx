@@ -299,7 +299,12 @@ export default function EditItemModal({ item, onClose, onSaved }: {
           attributes:   selectedTags,
           notes:        notes.trim(),
         });
-        if (result === 'duplicate') alert(`An asset for "${typeName}" with these attributes already exists.`);
+        if (result.status === 'duplicate') {
+          alert(`An asset for "${typeName}" with these attributes already exists.`);
+        } else if (result.assetPhotoUrl && result.assetPhotoUrl !== item.photo_url) {
+          // Point the item at the asset's copy so it won't lose its photo if the original file is cleaned up
+          await supabase.from('InventoryItems').update({ photo_url: result.assetPhotoUrl }).eq('id', item.id);
+        }
       }
 
       onSaved();

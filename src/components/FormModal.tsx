@@ -258,7 +258,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
       const qtyFair      = isSplit ? splitQty.Fair      : (globalQuality === 'Fair'      ? totalQuantity : 0);
       const qtyPoor      = isSplit ? splitQty.Poor      : (globalQuality === 'Poor'      ? totalQuantity : 0);
 
-      const { error: invError } = await supabase.from('InventoryItems').insert([{
+      const { data: invData, error: invError } = await supabase.from('InventoryItems').insert([{
         room_id: room.id,
         photo_url: photo.photo_url,
         item_type_id: itemTypeId,
@@ -268,7 +268,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
         qty_poor: qtyPoor,
         attributes: selectedTags,
         notes: notes.trim(),
-      }]);
+      }]).select('id').single();
       if (invError) throw invError;
 
       // 3. Update Photo Status
@@ -287,7 +287,12 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
           attributes:   selectedTags,
           notes:        notes.trim(),
         });
-        if (result === 'duplicate') alert(`An asset for "${typeName}" with these attributes already exists.`);
+        if (result.status === 'duplicate') {
+          alert(`An asset for "${typeName}" with these attributes already exists.`);
+        } else if (result.assetPhotoUrl && result.assetPhotoUrl !== photo.photo_url) {
+          // Point the item at the asset's copy so it won't lose its photo if the triage file is cleaned up
+          await supabase.from('InventoryItems').update({ photo_url: result.assetPhotoUrl }).eq('id', invData.id);
+        }
       }
 
       onSaved?.();
