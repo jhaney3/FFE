@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { saveAssetIfNew } from '@/lib/saveAsset';
-import { X, Check, Tag, ChevronDown, SplitSquareVertical, Info, Bookmark } from 'lucide-react';
+import { X, Check, Tag, ChevronDown, SplitSquareVertical, Info, Bookmark, Package } from 'lucide-react';
 
 export default function FormModal({ photo, room, onClose, onSaved }: { photo: any, room: any, onClose: () => void, onSaved?: () => void }) {
   const [loading, setLoading] = useState(false);
@@ -38,6 +38,8 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
 
   const [notes, setNotes] = useState('');
   const [saveAsAsset, setSaveAsAsset] = useState(false);
+  const [matchedAsset, setMatchedAsset] = useState<any>(null);
+  const [pendingTypeId, setPendingTypeId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTypes();
@@ -67,6 +69,32 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
       setAvailableTags([]);
     }
   }, [typeSearch]);
+
+  // Reactively check for a matching asset as type/attributes change
+  useEffect(() => {
+    setMatchedAsset(null);
+    setPendingTypeId(null);
+
+    const existingType = itemTypes.find(t => t.name.toLowerCase() === typeSearch.toLowerCase());
+    if (!existingType || selectedTags.length === 0) return;
+
+    const sorted = [...selectedTags].sort();
+    const timer = setTimeout(async () => {
+      const { data: assets } = await supabase
+        .from('Assets')
+        .select('*')
+        .eq('item_type_id', existingType.id);
+      const match = assets?.find(a =>
+        JSON.stringify([...(a.attributes || [])].sort()) === JSON.stringify(sorted)
+      );
+      if (match) {
+        setPendingTypeId(existingType.id);
+        setMatchedAsset(match);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [typeSearch, selectedTags, itemTypes]);
 
   const fetchTypes = async () => {
     const { data } = await supabase.from('ItemTypes').select('*').order('name');
@@ -210,40 +238,10 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
     });
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!typeSearch.trim()) return alert('Please enter an Item Type');
-    
-    if (isSplit && currentSplitTotal !== totalQuantity) {
-      return alert(`Split quantities (${currentSplitTotal}) must equal Total Quantity (${totalQuantity}).`);
-    }
-
+  const doInsert = async (itemTypeId: string, typeName: string) => {
     setLoading(true);
-
     try {
-      // 1. Resolve ItemType
-      let itemTypeId;
-      const typeName = toTitleCase(typeSearch.trim());
-      
-      const { data: existingType } = await supabase
-        .from('ItemTypes')
-        .select('id')
-        .ilike('name', typeName)
-        .maybeSingle();
-        
-      if (existingType) {
-        itemTypeId = existingType.id;
-      } else {
-        const { data: newType, error: typeError } = await supabase
-          .from('ItemTypes')
-          .insert([{ name: typeName }])
-          .select()
-          .single();
-        if (typeError) throw typeError;
-        itemTypeId = newType.id;
-      }
-
-      // 2. Insert any new tags for this Type
+      // 1. Insert any new tags for this Type
       for (const tagName of selectedTags) {
         const isParent = availableTags.find((t: any) => t.name === tagName)?.is_parent ?? false;
         await supabase.from('ItemTypeAttributes').upsert(
@@ -252,13 +250,13 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
         );
       }
 
-      // 3. Insert InventoryItem
+      // 2. Insert InventoryItem
       const qtyExcellent = isSplit ? splitQty.Excellent : (globalQuality === 'Excellent' ? totalQuantity : 0);
       const qtyGood      = isSplit ? splitQty.Good      : (globalQuality === 'Good'      ? totalQuantity : 0);
       const qtyFair      = isSplit ? splitQty.Fair      : (globalQuality === 'Fair'      ? totalQuantity : 0);
       const qtyPoor      = isSplit ? splitQty.Poor      : (globalQuality === 'Poor'      ? totalQuantity : 0);
 
-      const data = {
+      const { error: invError } = await supabase.from('InventoryItems').insert([{
         room_id: room.id,
         photo_url: photo.photo_url,
         item_type_id: itemTypeId,
@@ -268,19 +266,17 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
         qty_poor: qtyPoor,
         attributes: selectedTags,
         notes: notes.trim(),
-      };
-
-      const { error: invError } = await supabase.from('InventoryItems').insert([data]);
+      }]);
       if (invError) throw invError;
 
-      // 4. Update Photo Status
+      // 3. Update Photo Status
       const { error: photoError } = await supabase
         .from('IncomingPhotos')
         .update({ status: 'processed' })
         .eq('id', photo.id);
       if (photoError) throw photoError;
 
-      // 5. Optionally save as a reusable asset
+      // 4. Optionally save as a reusable asset
       if (saveAsAsset) {
         const result = await saveAssetIfNew({
           name:         typeName,
@@ -297,6 +293,64 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
     } catch (err: any) {
       alert(err.message);
     } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (matchedAsset) return; // warning already visible — user must interact with it
+    if (!typeSearch.trim()) return alert('Please enter an Item Type');
+
+    if (isSplit && currentSplitTotal !== totalQuantity) {
+      return alert(`Split quantities (${currentSplitTotal}) must equal Total Quantity (${totalQuantity}).`);
+    }
+
+    setLoading(true);
+
+    try {
+      // Resolve ItemType
+      const typeName = toTitleCase(typeSearch.trim());
+      let itemTypeId: string;
+
+      const { data: existingType } = await supabase
+        .from('ItemTypes')
+        .select('id')
+        .ilike('name', typeName)
+        .maybeSingle();
+
+      if (existingType) {
+        itemTypeId = existingType.id;
+      } else {
+        const { data: newType, error: typeError } = await supabase
+          .from('ItemTypes')
+          .insert([{ name: typeName }])
+          .select()
+          .single();
+        if (typeError) throw typeError;
+        itemTypeId = newType.id;
+      }
+
+      // Check for a matching asset before inserting
+      const sortedAttrs = [...selectedTags].sort();
+      const { data: assets } = await supabase
+        .from('Assets')
+        .select('*')
+        .eq('item_type_id', itemTypeId);
+      const match = assets?.find(a =>
+        JSON.stringify([...(a.attributes || [])].sort()) === JSON.stringify(sortedAttrs)
+      );
+
+      if (match) {
+        setPendingTypeId(itemTypeId);
+        setMatchedAsset(match);
+        setLoading(false);
+        return;
+      }
+
+      await doInsert(itemTypeId, typeName);
+    } catch (err: any) {
+      alert(err.message);
       setLoading(false);
     }
   };
@@ -323,8 +377,8 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
         </div>
         
         {/* Right Side: Form */}
-        <div className="w-full md:w-[55%] p-8 flex flex-col bg-white dark:bg-gray-900 h-full max-h-[85vh] overflow-y-auto custom-scrollbar relative">
-          <div className="flex justify-between items-start mb-6 sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md pb-4 border-b border-gray-100 dark:border-gray-800 z-10 -mt-2 pt-2">
+        <div className="w-full md:w-[55%] flex flex-col bg-white dark:bg-gray-900 h-full max-h-[85vh] overflow-y-auto custom-scrollbar relative">
+          <div className="flex justify-between items-start sticky top-0 bg-white dark:bg-gray-900 px-8 pt-8 pb-4 border-b border-gray-100 dark:border-gray-800 z-10 mb-6">
             <div>
               <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Log Details</h2>
               <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Classify the dropped item below.</p>
@@ -334,7 +388,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} className="flex-1 flex flex-col space-y-6">
+          <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} className="flex-1 flex flex-col space-y-6 px-8 pb-8">
             
             {/* Type Autocomplete */}
             <div className="relative">
@@ -578,6 +632,108 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
               ></textarea>
             </div>
 
+            {/* Matched asset warning */}
+            {matchedAsset && (
+              <div className="rounded-xl border border-amber-300 dark:border-amber-700 overflow-hidden">
+                <div className="flex min-h-[120px]">
+                  {/* Image panel */}
+                  <div className="w-32 shrink-0 relative bg-amber-100 dark:bg-amber-900/30">
+                    {matchedAsset.photo_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={matchedAsset.photo_url} alt={matchedAsset.name} className="absolute inset-0 w-full h-full object-cover" />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Package size={28} className="text-amber-400" />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Content panel */}
+                  <div className="flex-1 bg-amber-50 dark:bg-amber-900/20 p-4 flex flex-col gap-3 min-w-0">
+                    <div>
+                      <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">Existing asset matches</p>
+                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{matchedAsset.name}</p>
+                      {matchedAsset.attributes?.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {[...matchedAsset.attributes].sort((a: string, b: string) => {
+                            const aP = availableTags.find((t: any) => t.name === a)?.is_parent ?? false;
+                            const bP = availableTags.find((t: any) => t.name === b)?.is_parent ?? false;
+                            if (aP !== bP) return aP ? -1 : 1;
+                            return a.localeCompare(b);
+                          }).map((attr: string) => {
+                            const isParent = availableTags.find((t: any) => t.name === attr)?.is_parent ?? false;
+                            return (
+                              <span key={attr} className={`text-[10px] px-1.5 py-0.5 rounded leading-none font-medium ${
+                                isParent
+                                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400'
+                                  : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300'
+                              }`}>{attr}</span>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                    <p className="text-xs text-amber-700 dark:text-amber-400">Would you like to use this asset instead?</p>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      setLoading(true);
+                      try {
+                        // Insert inventory item using asset identity + current form quantities/notes
+                        const qtyExcellent = isSplit ? splitQty.Excellent : (globalQuality === 'Excellent' ? totalQuantity : 0);
+                        const qtyGood      = isSplit ? splitQty.Good      : (globalQuality === 'Good'      ? totalQuantity : 0);
+                        const qtyFair      = isSplit ? splitQty.Fair      : (globalQuality === 'Fair'      ? totalQuantity : 0);
+                        const qtyPoor      = isSplit ? splitQty.Poor      : (globalQuality === 'Poor'      ? totalQuantity : 0);
+                        const { error } = await supabase.from('InventoryItems').insert([{
+                          room_id:       room.id,
+                          photo_url:     matchedAsset.photo_url,
+                          item_type_id:  matchedAsset.item_type_id,
+                          qty_excellent: qtyExcellent,
+                          qty_good:      qtyGood,
+                          qty_fair:      qtyFair,
+                          qty_poor:      qtyPoor,
+                          attributes:    matchedAsset.attributes || [],
+                          notes:         notes.trim(),
+                        }]);
+                        if (error) throw error;
+                        // Remove from triage queue via status update (triggers Sidebar realtime handler)
+                        await supabase.from('IncomingPhotos').update({ status: 'processed' }).eq('id', photo.id);
+                        // Delete the storage file since this photo won't be referenced by any item
+                        if (photo.photo_url) {
+                          const marker = '/inventory_photos/';
+                          const idx = photo.photo_url.indexOf(marker);
+                          const filePath = idx !== -1 ? photo.photo_url.slice(idx + marker.length) : photo.photo_url.split('/').pop();
+                          if (filePath) await supabase.storage.from('inventory_photos').remove([filePath]);
+                        }
+                        onSaved?.();
+                        onClose();
+                      } catch (err: any) {
+                        alert(err.message);
+                        setLoading(false);
+                      }
+                    }}
+                    className="flex-1 py-2 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+                  >
+                    Use Asset
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const typeName = toTitleCase(typeSearch.trim());
+                      setMatchedAsset(null);
+                      doInsert(pendingTypeId!, typeName);
+                    }}
+                    className="flex-1 py-2 text-xs font-semibold rounded-lg border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+                  >
+                    Continue Anyway
+                  </button>
+                </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Save as asset toggle */}
             <div className="pt-2 mt-auto border-t border-gray-100 dark:border-gray-800">
               <button
@@ -597,8 +753,8 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
               </button>
 
               <button
-                disabled={loading || (isSplit && currentSplitTotal !== totalQuantity)} 
-                type="submit" 
+                disabled={loading || (isSplit && currentSplitTotal !== totalQuantity) || !!matchedAsset}
+                type="submit"
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md flex justify-center items-center gap-2 transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed group"
               >
                 {loading ? (

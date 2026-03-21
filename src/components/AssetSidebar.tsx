@@ -104,12 +104,30 @@ export default function AssetSidebar({ onClose }: { onClose: () => void }) {
   }, []);
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this asset?')) return;
     const asset = assets.find(a => a.id === id);
+
+    // Check how many inventory items reference this asset's photo
+    let referencingItems: any[] = [];
+    if (asset?.photo_url) {
+      const { data } = await supabase
+        .from('InventoryItems')
+        .select('id')
+        .eq('photo_url', asset.photo_url);
+      referencingItems = data || [];
+    }
+
+    const count = referencingItems.length;
+    const message = count > 0
+      ? `Delete this asset? ${count} inventory item${count !== 1 ? 's' : ''} still use its photo — the file will be kept until the last item is removed.`
+      : 'Delete this asset?';
+
+    if (!confirm(message)) return;
+
     await supabase.from('Assets').delete().eq('id', id);
     setAssets(prev => prev.filter(a => a.id !== id));
-    // Clean up the copied asset photo (only files in the assets/ subfolder)
-    if (asset?.photo_url) {
+
+    // Only delete the storage file if no inventory items still reference it
+    if (count === 0 && asset?.photo_url) {
       const marker = '/inventory_photos/';
       const idx = asset.photo_url.indexOf(marker);
       if (idx !== -1) {

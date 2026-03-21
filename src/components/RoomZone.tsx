@@ -312,10 +312,28 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
   // ── Item delete ───────────────────────────────────────────────────────────
 
   const handleDeleteItem = async (itemId: string, photoUrl: string | null) => {
-    if (!confirm('Are you sure you want to delete this item?')) return;
     const { error } = await supabase.from('InventoryItems').delete().eq('id', itemId);
     if (error) { alert(error.message); return; }
     if (photoUrl) await supabase.from('IncomingPhotos').update({ status: 'pending' }).eq('photo_url', photoUrl);
+
+    // If this was an asset photo, delete from storage only when nothing else references it
+    if (photoUrl) {
+      const marker = '/inventory_photos/';
+      const idx = photoUrl.indexOf(marker);
+      if (idx !== -1) {
+        const filePath = photoUrl.slice(idx + marker.length);
+        if (filePath.startsWith('assets/')) {
+          const [{ count: itemCount }, { count: assetCount }] = await Promise.all([
+            supabase.from('InventoryItems').select('id', { count: 'exact', head: true }).eq('photo_url', photoUrl),
+            supabase.from('Assets').select('id', { count: 'exact', head: true }).eq('photo_url', photoUrl),
+          ]);
+          if ((itemCount ?? 1) === 0 && (assetCount ?? 1) === 0) {
+            await supabase.storage.from('inventory_photos').remove([filePath]);
+          }
+        }
+      }
+    }
+
     if (onItemDeleted) onItemDeleted();
   };
 

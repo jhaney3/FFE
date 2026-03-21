@@ -5,9 +5,10 @@ import { supabase } from '@/lib/supabase';
 import RoomZone from '@/components/RoomZone';
 import PdfUploader from './PdfUploader';
 import NewZoneModal from './NewZoneModal';
-import { Layers, ShieldAlert, Trash2, ChevronLeft, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize, Package } from 'lucide-react';
+import { Layers, ShieldAlert, Trash2, ChevronLeft, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize, Package, Tag } from 'lucide-react';
 import AssetSidebar from './AssetSidebar';
 import ItemTypeFilter from './ItemTypeFilter';
+import TagManagerModal from './TagManagerModal';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
 
@@ -19,6 +20,7 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
   const [rooms, setRooms] = useState<any[]>([]);
   const [items, setItems] = useState<any[]>([]);
   const [isAdminMode, setIsAdminMode] = useState(false);
+  const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [controlsOpen, setControlsOpen] = useState(false);
   const [pendingZoneParams, setPendingZoneParams] = useState<{x: number, y: number, width: number, height: number} | null>(null);
   const [editingRoom, setEditingRoom] = useState<any | null>(null);
@@ -294,18 +296,27 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
                 />
 
                 {/* Admin mode — floating bottom-left */}
-                <button
-                  onClick={() => setIsAdminMode(m => !m)}
-                  className={`absolute bottom-6 left-6 z-20 flex items-center gap-2 px-3.5 py-2 rounded-full shadow-lg backdrop-blur-md text-sm font-semibold border transition-all ${
-                    isAdminMode
-                      ? 'bg-indigo-600 text-white border-indigo-500 shadow-indigo-500/40'
-                      : 'bg-white/90 dark:bg-black/90 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-800 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400'
-                  }`}
-                >
-                  <ShieldAlert size={15} />
-                  <span>Admin</span>
-                  {isAdminMode && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
-                </button>
+                <div className="absolute bottom-6 left-6 z-20 flex items-center gap-2">
+                  <button
+                    onClick={() => setIsAdminMode(m => !m)}
+                    className={`flex items-center gap-2 px-3.5 py-2 rounded-full shadow-lg backdrop-blur-md text-sm font-semibold border transition-all ${
+                      isAdminMode
+                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-indigo-500/40'
+                        : 'bg-white/90 dark:bg-black/90 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-800 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400'
+                    }`}
+                  >
+                    <ShieldAlert size={15} />
+                    <span>Admin</span>
+                    {isAdminMode && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+                  </button>
+                  <button
+                    onClick={() => setTagManagerOpen(true)}
+                    className="flex items-center gap-2 px-3.5 py-2 rounded-full shadow-lg backdrop-blur-md text-sm font-semibold border transition-all bg-white/90 dark:bg-black/90 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-800 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400"
+                  >
+                    <Tag size={15} />
+                    <span>Tags</span>
+                  </button>
+                </div>
 
                 {/* Assets FAB — floating bottom-right */}
                 <button
@@ -438,6 +449,10 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
 
       {assetSidebarOpen && (
         <AssetSidebar onClose={() => setAssetSidebarOpen(false)} />
+      )}
+
+      {tagManagerOpen && (
+        <TagManagerModal onClose={() => setTagManagerOpen(false)} />
       )}
     </div>
   );

@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, ChevronDown, Check, AlertTriangle, Tag, Layers, ShieldCheck } from 'lucide-react';
+import { X, ChevronDown, Check, AlertTriangle, Tag, Layers, ShieldCheck, Package } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { saveAssetIfNew } from '@/lib/saveAsset';
 
 function Section({ title, enabled, onToggle, icon, children }: {
   title: string;
@@ -41,7 +42,7 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [step, setStep] = useState<'edit' | 'confirm'>('edit');
+  const [step, setStep] = useState<'edit' | 'confirm' | 'pick-photo' | 'asset-exists'>('edit');
   const [loading, setLoading] = useState(false);
 
   // ── Attributes ──────────────────────────────────────────────────────────────
@@ -60,6 +61,18 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
   // ── Quality ──────────────────────────────────────────────────────────────────
   const [qualityEnabled, setQualityEnabled] = useState(false);
   const [quality, setQuality]               = useState('Good');
+
+  // ── Post-save asset state ────────────────────────────────────────────────────
+  const [matchedAsset, setMatchedAsset]         = useState<any>(null);
+  const [postSaveTypeId, setPostSaveTypeId]     = useState<string | null>(null);
+  const [postSaveTypeName, setPostSaveTypeName] = useState('');
+  const [postSaveAttrs, setPostSaveAttrs]       = useState<string[]>([]);
+  const [savedItems, setSavedItems]             = useState<any[]>([]);
+  const [savedCount, setSavedCount]             = useState(0);
+  const [selectedPhotoItemId, setSelectedPhotoItemId] = useState<string | null>(null);
+  const [removePhotoIds, setRemovePhotoIds]     = useState<Set<string>>(new Set());
+  const [convertAll, setConvertAll]             = useState(false);
+  const [assetLoading, setAssetLoading]         = useState(false);
 
   useEffect(() => {
     supabase.from('ItemTypes').select('*').order('name')
@@ -191,12 +204,140 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
         }));
       }
 
+      // Snapshot before onSaved() resets parent selection
+      const itemsSnapshot = [...selectedItems];
+      const countSnapshot = selectedIds.length;
+      setSavedItems(itemsSnapshot);
+      setSavedCount(countSnapshot);
+
       onSaved();
+
+      // Check if all items now share the same type + attributes → offer asset creation
+      const finalTypeId = resolvedTypeId ?? itemsSnapshot[0]?.item_type_id ?? null;
+      const allSameType = finalTypeId && itemsSnapshot.every(i =>
+        (resolvedTypeId ?? i.item_type_id) === finalTypeId
+      );
+
+      if (allSameType) {
+        let checkAttrs: string[];
+        let allSameAttrs: boolean;
+        if (attrsEnabled) {
+          allSameAttrs = true;
+          checkAttrs = tagsToAdd;
+        } else {
+          const firstSorted = [...(itemsSnapshot[0]?.attributes || [])].sort().join(',');
+          allSameAttrs = itemsSnapshot.every(i =>
+            [...(i.attributes || [])].sort().join(',') === firstSorted
+          );
+          checkAttrs = itemsSnapshot[0]?.attributes || [];
+        }
+
+        if (allSameAttrs) {
+          const sortedAttrs = [...checkAttrs].sort();
+          const { data: assets } = await supabase
+            .from('Assets').select('*').eq('item_type_id', finalTypeId);
+          const found = assets?.find(a =>
+            JSON.stringify([...(a.attributes || [])].sort()) === JSON.stringify(sortedAttrs)
+          );
+          const typeName = itemTypes.find(t => t.id === finalTypeId)?.name || typeSearch.trim();
+          setPostSaveTypeId(finalTypeId);
+          setPostSaveTypeName(typeName);
+          setPostSaveAttrs(checkAttrs);
+          if (found) {
+            setMatchedAsset(found);
+            setStep('asset-exists');
+            return;
+          } else {
+            const firstWithPhoto = itemsSnapshot.find(i => i.photo_url);
+            setSelectedPhotoItemId(firstWithPhoto?.id ?? null);
+            setStep('pick-photo');
+            return;
+          }
+        }
+      }
+
       onClose();
     } catch (err: any) {
       alert(err.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const deleteItemPhoto = async (item: any) => {
+    if (!item?.photo_url) return;
+    const marker = '/inventory_photos/';
+    const idx = item.photo_url.indexOf(marker);
+    const filePath = idx !== -1
+      ? item.photo_url.slice(idx + marker.length)
+      : item.photo_url.split('/').pop();
+    // Never delete asset-owned files — they live in the assets/ subfolder
+    if (!filePath || filePath.startsWith('assets/')) return;
+    await supabase.storage.from('inventory_photos').remove([filePath]);
+  };
+
+  // Shared photo cleanup — called after asset exists or is created
+  // assetPhotoUrl: the url to replace item photos with (null = just delete)
+  // skipItemId: the representative item whose photo we keep intact
+  const handlePhotoCleanup = async (assetPhotoUrl: string | null, skipItemId: string | null) => {
+    if (convertAll) {
+      for (const item of savedItems) {
+        if (item.id === skipItemId || !item.photo_url) continue;
+        await deleteItemPhoto(item);
+        await supabase.from('InventoryItems')
+          .update({ photo_url: assetPhotoUrl })
+          .eq('id', item.id);
+      }
+    } else {
+      for (const itemId of removePhotoIds) {
+        const item = savedItems.find(i => i.id === itemId);
+        await deleteItemPhoto(item);
+        await supabase.from('InventoryItems').update({ photo_url: assetPhotoUrl }).eq('id', itemId);
+      }
+    }
+  };
+
+  const handleCreateAsset = async () => {
+    setAssetLoading(true);
+    try {
+      const chosenItem = savedItems.find(i => i.id === selectedPhotoItemId);
+      await saveAssetIfNew({
+        name:         postSaveTypeName,
+        item_type_id: postSaveTypeId!,
+        photo_url:    chosenItem?.photo_url ?? null,
+        attributes:   postSaveAttrs,
+        notes:        '',
+      });
+
+      // Get the newly created asset's photo_url for replacement
+      const { data: newAsset } = await supabase
+        .from('Assets')
+        .select('photo_url')
+        .eq('item_type_id', postSaveTypeId!)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      await handlePhotoCleanup(newAsset?.photo_url ?? null, selectedPhotoItemId);
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setAssetLoading(false);
+    }
+  };
+
+  const handleExistingAssetDone = async () => {
+    setAssetLoading(true);
+    try {
+      await handlePhotoCleanup(matchedAsset?.photo_url ?? null, null);
+      onSaved();
+      onClose();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setAssetLoading(false);
     }
   };
 
@@ -208,7 +349,7 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
           <div>
             <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Mass Edit</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{selectedIds.length} item{selectedIds.length !== 1 ? 's' : ''} selected</p>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{savedCount || selectedIds.length} item{(savedCount || selectedIds.length) !== 1 ? 's' : ''} selected</p>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors">
             <X size={18} />
@@ -340,7 +481,7 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
               </button>
             </div>
           </div>
-        ) : (
+        ) : step === 'confirm' ? (
           // Confirm step
           <div className="p-6 space-y-4">
             <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -364,6 +505,230 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
                 className="flex-1 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl transition-colors flex items-center justify-center gap-1.5"
               >
                 {loading ? 'Saving...' : <><Check size={15} /> Apply to {selectedIds.length} Items</>}
+              </button>
+            </div>
+          </div>
+
+        ) : step === 'asset-exists' ? (
+          // Existing asset match
+          <div className="p-6 space-y-4 max-h-[72vh] overflow-y-auto custom-scrollbar">
+            <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Matches existing asset</p>
+            <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
+              {matchedAsset?.photo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={matchedAsset.photo_url} alt={matchedAsset.name} className="w-14 h-14 rounded-lg object-cover shrink-0" />
+              ) : (
+                <div className="w-14 h-14 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                  <Package size={20} className="text-amber-500" />
+                </div>
+              )}
+              <div>
+                <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{matchedAsset?.name}</p>
+                {matchedAsset?.attributes?.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {matchedAsset.attributes.map((a: string) => (
+                      <span key={a} className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 font-medium">{a}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Photo management for existing asset */}
+            {savedItems.some(i => i.photo_url) && (
+              <>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Would you like to clean up individual item photos?</p>
+
+                {/* Convert all toggle */}
+                <button
+                  type="button"
+                  onClick={() => { setConvertAll(v => !v); setRemovePhotoIds(new Set()); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
+                    convertAll
+                      ? 'bg-indigo-900/40 border-indigo-600 text-indigo-300'
+                      : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-indigo-700'
+                  }`}
+                >
+                  <div className={`w-8 h-4 rounded-full transition-colors relative shrink-0 ${convertAll ? 'bg-indigo-500' : 'bg-gray-600'}`}>
+                    <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all ${convertAll ? 'left-4' : 'left-0.5'}`} />
+                  </div>
+                  <div className="text-left">
+                    <p className="leading-none">Convert all to asset image</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5 font-normal">Replace every item photo with the asset representative above</p>
+                  </div>
+                </button>
+
+                {/* Individual checkboxes when convert-all is off */}
+                {!convertAll && (
+                  <div className="grid grid-cols-3 gap-2">
+                    {savedItems.filter(i => i.photo_url).map(item => {
+                      const willRemove = removePhotoIds.has(item.id);
+                      return (
+                        <div key={item.id} className="relative rounded-xl overflow-hidden border-2 border-gray-700">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={item.photo_url} alt="" className="w-full h-20 object-cover" />
+                          <div className="p-1.5 bg-gray-900">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setRemovePhotoIds(prev => {
+                                  const next = new Set(prev);
+                                  next.has(item.id) ? next.delete(item.id) : next.add(item.id);
+                                  return next;
+                                });
+                              }}
+                              className="flex items-center gap-1.5 w-full cursor-pointer"
+                            >
+                              <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                                willRemove ? 'bg-indigo-500 border-indigo-500' : 'border-gray-500 bg-gray-800'
+                              }`}>
+                                {willRemove && <Check size={9} className="text-white" />}
+                              </div>
+                              <span className="text-[10px] text-gray-400 leading-tight">Remove from item</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {(convertAll || removePhotoIds.size > 0) && (
+                  <p className="text-[11px] text-amber-500 flex items-center gap-1">
+                    <AlertTriangle size={11} className="shrink-0" />
+                    {convertAll
+                      ? 'All item photos will be permanently replaced with the asset image.'
+                      : 'Removing a photo from an item is permanent.'}
+                  </p>
+                )}
+              </>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <button onClick={onClose} className="flex-1 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
+                Skip
+              </button>
+              <button
+                disabled={assetLoading}
+                onClick={handleExistingAssetDone}
+                className="flex-1 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+              >
+                {assetLoading ? 'Applying...' : <><Check size={15} /> Done</>}
+              </button>
+            </div>
+          </div>
+
+        ) : (
+          // Pick photo step
+          <div className="p-6 space-y-4 max-h-[72vh] overflow-y-auto custom-scrollbar">
+            <div>
+              <p className="text-xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wider mb-0.5">Create Reusable Asset</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                All {savedCount} items now share the same type and attributes. Pick a photo to represent <span className="font-semibold text-gray-800 dark:text-gray-200">{postSaveTypeName}</span> as an asset.
+              </p>
+            </div>
+
+            {savedItems.some(i => i.photo_url) ? (
+              <>
+                {/* Photo grid — radio select for representative */}
+                <div className="grid grid-cols-3 gap-2">
+                  {savedItems.filter(i => i.photo_url).map(item => {
+                    const isSelected = selectedPhotoItemId === item.id;
+                    const willRemove = removePhotoIds.has(item.id);
+                    const isRep = isSelected;
+                    return (
+                      <div key={item.id} className={`relative rounded-xl overflow-hidden border-2 transition-all ${
+                        isSelected ? 'border-indigo-500' : 'border-gray-700'
+                      }`}>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={item.photo_url}
+                          alt=""
+                          className="w-full h-20 object-cover cursor-pointer"
+                          onClick={() => setSelectedPhotoItemId(item.id)}
+                        />
+                        {isSelected && (
+                          <div className="absolute top-1 left-1 w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center shadow">
+                            <Check size={11} className="text-white" />
+                          </div>
+                        )}
+                        {/* Per-item remove checkbox — only shown when convertAll is off */}
+                        {!convertAll && (
+                          <div className="p-1.5 bg-gray-900">
+                            <button
+                              type="button"
+                              disabled={isRep}
+                              onClick={() => {
+                                if (isRep) return;
+                                setRemovePhotoIds(prev => {
+                                  const next = new Set(prev);
+                                  next.has(item.id) ? next.delete(item.id) : next.add(item.id);
+                                  return next;
+                                });
+                              }}
+                              className={`flex items-center gap-1.5 w-full ${isRep ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+                            >
+                              <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                                willRemove && !isRep
+                                  ? 'bg-indigo-500 border-indigo-500'
+                                  : 'border-gray-500 bg-gray-800'
+                              }`}>
+                                {willRemove && !isRep && <Check size={9} className="text-white" />}
+                              </div>
+                              <span className="text-[10px] text-gray-400 leading-tight">Remove from item</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Convert all toggle — primary mass action */}
+                <button
+                  type="button"
+                  onClick={() => { setConvertAll(v => !v); setRemovePhotoIds(new Set()); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
+                    convertAll
+                      ? 'bg-indigo-900/40 border-indigo-600 text-indigo-300'
+                      : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-indigo-700'
+                  }`}
+                >
+                  <div className={`w-8 h-4 rounded-full transition-colors relative shrink-0 ${convertAll ? 'bg-indigo-500' : 'bg-gray-600'}`}>
+                    <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all ${convertAll ? 'left-4' : 'left-0.5'}`} />
+                  </div>
+                  <div className="text-left">
+                    <p className="leading-none">Convert all to asset image</p>
+                    <p className="text-[11px] text-gray-500 mt-0.5 font-normal">Replace every other item photo with the representative above</p>
+                  </div>
+                </button>
+
+                {(convertAll || removePhotoIds.size > 0) && (
+                  <p className="text-[11px] text-amber-500 flex items-center gap-1">
+                    <AlertTriangle size={11} className="shrink-0" />
+                    {convertAll
+                      ? 'All other item photos will be permanently replaced with the asset image.'
+                      : 'Removing a photo from an item is permanent.'}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-gray-400 italic">No photos available — asset will be created without one.</p>
+            )}
+
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={onClose}
+                className="flex-1 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+              >
+                Skip
+              </button>
+              <button
+                disabled={assetLoading}
+                onClick={handleCreateAsset}
+                className="flex-1 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+              >
+                {assetLoading ? 'Creating...' : <><Check size={15} /> Create Asset</>}
               </button>
             </div>
           </div>

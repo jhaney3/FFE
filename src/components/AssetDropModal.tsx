@@ -15,7 +15,7 @@ export default function AssetDropModal({ asset, room, onClose, onSaved }: {
   const [quality, setQuality] = useState('Good');
   const [isSplit, setIsSplit] = useState(false);
   const [splitQty, setSplitQty] = useState({ Excellent: 0, Good: 1, Fair: 0, Poor: 0 });
-  const [notes, setNotes] = useState(asset.notes || '');
+  const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
   const [tagMeta, setTagMeta] = useState<Map<string, boolean>>(new Map());
 

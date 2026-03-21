@@ -49,7 +49,23 @@ export default function Dashboard() {
   const [selectedIds, setSelectedIds]     = useState<Set<string>>(new Set());
   const [massEditOpen, setMassEditOpen]   = useState(false);
 
-  useEffect(() => { fetchItems(); }, []);
+  useEffect(() => {
+    fetchItems();
+
+    let debounce: ReturnType<typeof setTimeout>;
+    const channel = supabase
+      .channel('dashboard-inventory')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'InventoryItems' }, () => {
+        clearTimeout(debounce);
+        debounce = setTimeout(() => fetchItems(), 300);
+      })
+      .subscribe();
+
+    return () => {
+      clearTimeout(debounce);
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   const fetchItems = async () => {
     setLoading(true);

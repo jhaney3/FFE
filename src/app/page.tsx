@@ -172,6 +172,7 @@ export default function Home() {
           room={assetDropState.room}
           onClose={() => setAssetDropState(null)}
           onSaved={() => setItemsVersion(v => v + 1)}
+
         />
       )}
     </div>
