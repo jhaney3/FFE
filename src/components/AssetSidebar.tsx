@@ -32,7 +32,7 @@ function AssetCard({ asset, onDelete, tagMeta }: { asset: any; onDelete: (id: st
       <div className="w-full aspect-square bg-gray-900 border-b border-gray-800">
         {asset.photo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={asset.photo_url} alt={asset.name} className="w-full h-full object-cover pointer-events-none" />
+          <img src={asset.photo_url} alt={asset.name} className="w-full h-full object-cover pointer-events-none" loading="lazy" />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-gray-700">
             <Package size={20} />

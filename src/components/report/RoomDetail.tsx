@@ -77,6 +77,7 @@ export default function RoomDetail({ items, tagMeta = new Map() }: { items: any[
                           src={item.photo_url}
                           alt={item.ItemTypes?.name}
                           className="w-full h-full object-cover"
+                          loading="lazy"
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-300 text-[10px]">No photo</div>

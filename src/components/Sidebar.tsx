@@ -34,6 +34,7 @@ function DraggableThumbnail({ photo, onDelete }: { photo: any, onDelete: (id: st
         src={photo.photo_url}
         alt="Incoming Triage item"
         className="w-full h-full object-cover pointer-events-none"
+        loading="lazy"
       />
 
       {/* Hover delete */}

@@ -558,7 +558,7 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
                 {items.length > 0 ? items.map(item => (
                   <div key={item.id} className="group/item flex items-center gap-2.5 p-2 border border-gray-800 bg-gray-950/50 relative">
                     {item.photo_url ? (
-                      <img src={item.photo_url} alt={item.ItemTypes?.name || 'Item'} className="w-9 h-9 object-cover bg-gray-800 shrink-0" />
+                      <img src={item.photo_url} alt={item.ItemTypes?.name || 'Item'} className="w-9 h-9 object-cover bg-gray-800 shrink-0" loading="lazy" />
                     ) : (
                       <div className="w-9 h-9 bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-600 shrink-0"><Package size={14} /></div>
                     )}

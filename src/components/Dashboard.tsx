@@ -367,7 +367,7 @@ export default function Dashboard() {
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                         <a href={item.photo_url} target="_blank" rel="noreferrer" className="block w-10 h-10 overflow-hidden border border-gray-800 group-hover:border-gray-700 shrink-0 transition-colors">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={item.photo_url} alt={item.ItemTypes?.name} className="w-full h-full object-cover" />
+                          <img src={item.photo_url} alt={item.ItemTypes?.name} className="w-full h-full object-cover" loading="lazy" />
                         </a>
                       </td>
 
