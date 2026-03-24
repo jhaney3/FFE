@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useDroppable } from '@dnd-kit/core';
 import { Building2, Layers, Package, Pencil, Tag, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useLowBandwidth } from '@/lib/BandwidthContext';
 import EditItemModal from './EditItemModal';
 
 // ─── Room type → color ────────────────────────────────────────────────────────
@@ -74,6 +75,7 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const nameRef    = useRef<HTMLSpanElement | null>(null);
+  const { lowBandwidth } = useLowBandwidth();
   const zoneRef    = useRef<HTMLDivElement | null>(null);
   const popoutRef  = useRef<HTMLDivElement | null>(null);
   const svgLineRef = useRef<SVGLineElement | null>(null);
@@ -557,7 +559,7 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
               <div className="flex-1 space-y-1.5 overflow-y-auto pr-1 min-h-0 custom-scrollbar">
                 {items.length > 0 ? items.map(item => (
                   <div key={item.id} className="group/item flex items-center gap-2.5 p-2 border border-gray-800 bg-gray-950/50 relative">
-                    {item.photo_url ? (
+                    {item.photo_url && !lowBandwidth ? (
                       <img src={item.photo_url} alt={item.ItemTypes?.name || 'Item'} className="w-9 h-9 object-cover bg-gray-800 shrink-0" loading="lazy" />
                     ) : (
                       <div className="w-9 h-9 bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-600 shrink-0"><Package size={14} /></div>

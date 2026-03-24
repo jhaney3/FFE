@@ -11,11 +11,12 @@ import Dashboard from '@/components/Dashboard';
 import FormModal from '@/components/FormModal';
 import AssetDropModal from '@/components/AssetDropModal';
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
-import { LayoutGrid, Map as MapIcon, Database, LogOut } from 'lucide-react';
+import { LayoutGrid, Map as MapIcon, Database, LogOut, WifiOff } from 'lucide-react';
+import { BandwidthProvider, useLowBandwidth } from '@/lib/BandwidthContext';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 
-export default function Home() {
+function HomeInner() {
   const [activeTab, setActiveTab] = useState<'map' | 'list'>('map');
   const [activePhoto, setActivePhoto] = useState<any>(null);
   const [activeAsset, setActiveAsset] = useState<any>(null);
@@ -121,6 +122,7 @@ export default function Home() {
           {user && (
             <span className="font-mono text-[10px] text-gray-500 hidden md:inline tracking-wide">{user.user_metadata?.full_name || user.email}</span>
           )}
+          <BandwidthToggle />
           <button
             onClick={handleSignOut}
             title="Sign out"
@@ -190,5 +192,31 @@ export default function Home() {
         />
       )}
     </div>
+  );
+}
+
+function BandwidthToggle() {
+  const { lowBandwidth, toggle } = useLowBandwidth();
+  return (
+    <button
+      onClick={toggle}
+      title={lowBandwidth ? 'Low bandwidth mode on — click to resume loading' : 'Click to pause data loading'}
+      className={`flex items-center gap-1.5 px-2 py-1 font-mono text-[9px] tracking-wider uppercase border transition-colors ${
+        lowBandwidth
+          ? 'border-amber-700 bg-amber-900/20 text-amber-500'
+          : 'border-transparent text-gray-600 hover:text-gray-300'
+      }`}
+    >
+      <WifiOff size={11} />
+      {lowBandwidth && <span>Paused</span>}
+    </button>
+  );
+}
+
+export default function Home() {
+  return (
+    <BandwidthProvider>
+      <HomeInner />
+    </BandwidthProvider>
   );
 }

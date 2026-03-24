@@ -66,6 +66,7 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
     if (activePlanId) fetchRooms(activePlanId);
   }, [activePlanId]);
 
+
   useEffect(() => {
     if (activePlanId && itemsVersion) fetchRooms(activePlanId);
   }, [itemsVersion]);
