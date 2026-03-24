@@ -45,13 +45,13 @@ export default function PdfUploader({ onUploaded }: { onUploaded: () => void }) 
   };
 
   return (
-    <label className="px-4 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium flex items-center gap-2 hover:bg-indigo-700 cursor-pointer shadow-sm transition-colors">
+    <label className="px-3 py-1 border border-gray-600 bg-gray-900 text-gray-400 hover:border-blue-600 hover:text-blue-400 font-mono text-[10px] tracking-wider uppercase flex items-center gap-1.5 cursor-pointer transition-colors">
       {uploading ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
+        <Loader2 className="h-3 w-3 animate-spin" />
       ) : (
-        <FileUp size={16} />
+        <FileUp size={12} />
       )}
-      <span>Upload PDF Plan</span>
+      <span>{uploading ? 'Uploading...' : 'Upload PDF'}</span>
       <input
         type="file"
         accept="application/pdf"

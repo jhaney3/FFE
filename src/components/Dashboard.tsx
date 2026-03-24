@@ -13,10 +13,10 @@ function Checkbox({ checked, indeterminate, onChange }: {
     <button
       type="button"
       onClick={(e) => { e.stopPropagation(); onChange(); }}
-      className={`w-4 h-4 rounded flex items-center justify-center border transition-all shrink-0 ${
+      className={`w-3.5 h-3.5 flex items-center justify-center border transition-all shrink-0 ${
         checked || indeterminate
-          ? 'border-indigo-500 bg-indigo-500'
-          : 'border-gray-400 dark:border-gray-500 bg-transparent hover:border-indigo-400'
+          ? 'border-blue-500 bg-blue-600'
+          : 'border-gray-700 bg-transparent hover:border-gray-500'
       }`}
     >
       {indeterminate && !checked
@@ -216,65 +216,65 @@ export default function Dashboard() {
     window.open(`/report?${params.toString()}`, '_blank');
   };
 
-  const selectClass = "w-full px-3 py-2 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg outline-none focus:ring-2 ring-blue-500/50 appearance-none text-gray-700 dark:text-gray-200 text-sm";
+  const selectClass = "w-full px-3 py-1.5 bg-gray-950 border border-gray-800 outline-none focus:border-blue-600 focus:ring-1 ring-blue-600/30 appearance-none text-gray-200 text-xs font-mono transition-colors";
 
   return (
-    <div className="flex-1 w-full bg-gray-50 dark:bg-gray-950 flex flex-col items-center py-8 px-4 sm:px-8 overflow-y-auto custom-scrollbar">
+    <div className="flex-1 w-full bg-gray-950 flex flex-col items-center py-6 px-4 sm:px-8 overflow-y-auto custom-scrollbar">
       <div className="max-w-7xl w-full pb-24">
 
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-6 gap-4 border-b border-gray-800 pb-5">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Inventory Dashboard</h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">View, filter, and export the logged FFE items.</p>
+            <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-gray-500 mb-1.5">Inventory Registry</p>
+            <h1 className="text-2xl font-semibold text-gray-100 tracking-tight">FFE Catalog</h1>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={openReport}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-lg shadow-sm font-medium flex items-center gap-2 transition-all active:scale-95"
+              className="border border-gray-700 hover:border-gray-600 text-gray-400 hover:text-gray-200 px-4 py-2 font-mono text-[10px] tracking-[0.12em] uppercase flex items-center gap-2 transition-colors hover:bg-gray-900"
             >
-              <Printer size={18} /> Print Report
+              <Printer size={13} /> Report
             </button>
             <button
               onClick={exportCSV}
-              className="bg-green-600 hover:bg-green-700 text-white px-5 py-2.5 rounded-lg shadow-sm font-medium flex items-center gap-2 transition-all active:scale-95"
+              className="border border-blue-700/50 hover:border-blue-500 text-blue-400 hover:text-blue-300 px-4 py-2 font-mono text-[10px] tracking-[0.12em] uppercase flex items-center gap-2 transition-colors bg-blue-600/5 hover:bg-blue-600/10"
             >
-              <Download size={18} /> Export CSV
+              <Download size={13} /> Export CSV
             </button>
           </div>
         </div>
 
         {/* Filter Panel */}
-        <div className="bg-white dark:bg-gray-900 p-5 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 mb-6 space-y-4">
-          <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 font-semibold text-sm">
-            <Filter size={15} /> Filters
+        <div className="border border-gray-800 bg-gray-900/40 px-5 py-4 mb-0 space-y-4">
+          <div className="flex items-center gap-2 font-mono text-[10px] tracking-[0.18em] uppercase text-gray-500">
+            <Filter size={11} /> Filters
           </div>
 
           {/* Row 1: Location hierarchy */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <div>
-              <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Level</label>
+              <label className="block font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500 mb-1">Level</label>
               <select value={levelFilter} onChange={(e) => { setLevelFilter(e.target.value); setBuildingFilter(''); setRoomTypeFilter(''); setAttributeFilter(''); }} className={selectClass}>
                 <option value="">All Levels</option>
                 {uniqueLevels.map(l => <option key={l} value={l}>{l}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Building</label>
+              <label className="block font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500 mb-1">Building</label>
               <select value={buildingFilter} onChange={(e) => { setBuildingFilter(e.target.value); setRoomTypeFilter(''); setAttributeFilter(''); }} className={selectClass}>
                 <option value="">All Buildings</option>
                 {uniqueBuildings.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Room Type</label>
+              <label className="block font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500 mb-1">Room Type</label>
               <select value={roomTypeFilter} onChange={(e) => { setRoomTypeFilter(e.target.value); setAttributeFilter(''); }} className={selectClass}>
                 <option value="">All Types</option>
                 {uniqueRoomTypes.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Attribute</label>
+              <label className="block font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500 mb-1">Attribute</label>
               <select value={attributeFilter} onChange={(e) => setAttributeFilter(e.target.value)} className={selectClass}>
                 <option value="">All Attributes</option>
                 {uniqueAttributes.map(a => <option key={a} value={a}>{a}</option>)}
@@ -283,20 +283,20 @@ export default function Dashboard() {
           </div>
 
           {/* Row 2: Item filters */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 border-t border-gray-100 dark:border-gray-800">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1 border-t border-gray-800">
             <div className="relative">
-              <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Item Type</label>
-              <Search className="absolute left-3 bottom-2.5 text-gray-400 h-4 w-4" />
+              <label className="block font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500 mb-1">Item Type</label>
+              <Search className="absolute left-2.5 bottom-2 text-gray-600 h-3.5 w-3.5" />
               <input
                 type="text"
                 placeholder="Search by type name..."
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg outline-none focus:ring-2 ring-blue-500/50 text-sm"
+                className="w-full pl-8 pr-4 py-1.5 bg-gray-950 border border-gray-800 outline-none focus:border-blue-600 focus:ring-1 ring-blue-600/30 text-xs font-mono text-gray-200 placeholder:text-gray-700 transition-colors"
               />
             </div>
             <div>
-              <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-1">Condition</label>
+              <label className="block font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500 mb-1">Condition</label>
               <select value={qualityFilter} onChange={(e) => setQualityFilter(e.target.value)} className={selectClass}>
                 <option value="">All Conditions</option>
                 <option value="Excellent">Excellent</option>
@@ -309,72 +309,71 @@ export default function Dashboard() {
 
           {/* Active filter summary + clear */}
           {(levelFilter || buildingFilter || roomTypeFilter || typeFilter || qualityFilter || attributeFilter) && (
-            <div className="flex items-center gap-2 pt-1 flex-wrap">
-              <span className="text-xs text-gray-400">{filteredItems.length} result{filteredItems.length !== 1 ? 's' : ''}</span>
+            <div className="flex items-center gap-3 pt-1 flex-wrap">
+              <span className="font-mono text-[10px] text-gray-400">{filteredItems.length} result{filteredItems.length !== 1 ? 's' : ''}</span>
               <button
                 onClick={() => { setLevelFilter(''); setBuildingFilter(''); setRoomTypeFilter(''); setTypeFilter(''); setQualityFilter(''); setAttributeFilter(''); }}
-                className="text-xs text-red-500 hover:text-red-600 font-medium underline"
+                className="font-mono text-[10px] tracking-wider uppercase text-gray-500 hover:text-gray-200 transition-colors border-b border-gray-700 hover:border-gray-400"
               >
-                Clear all filters
+                Clear filters
               </button>
             </div>
           )}
         </div>
 
         {/* Table */}
-        <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+        <div className="border border-t-0 border-gray-800 overflow-hidden">
           <div className="overflow-x-auto w-full">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="bg-gray-50 dark:bg-gray-950/50 border-b border-gray-200 dark:border-gray-800 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  {/* Select all checkbox */}
-                  <th className="pl-5 pr-2 py-4 w-10">
+                <tr className="bg-gray-900/60 border-b border-gray-800">
+                  <th className="pl-5 pr-2 py-3 w-10">
                     <Checkbox
                       checked={allFilteredSelected}
                       indeterminate={someFilteredSelected && !allFilteredSelected}
                       onChange={toggleSelectAll}
                     />
                   </th>
-                  <th className="px-6 py-4">Photo</th>
-                  <th className="px-6 py-4">Type & Attributes</th>
-                  <th className="px-6 py-4">Condition</th>
-                  <th className="px-6 py-4">Location</th>
-                  <th className="px-6 py-4">Added</th>
+                  <th className="px-4 py-3 font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500">Photo</th>
+                  <th className="px-4 py-3 font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500">Type & Attributes</th>
+                  <th className="px-4 py-3 font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500">Condition</th>
+                  <th className="px-4 py-3 font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500">Location</th>
+                  <th className="px-4 py-3 font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500">Added</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-100 dark:divide-gray-800/60">
+              <tbody>
                 {loading ? (
-                  <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500">Loading data...</td></tr>
+                  <tr><td colSpan={6} className="px-6 py-12 text-center font-mono text-xs text-gray-500 tracking-widest">LOADING...</td></tr>
                 ) : filteredItems.length === 0 ? (
-                  <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500">No items found matching the filters.</td></tr>
+                  <tr><td colSpan={6} className="px-6 py-12 text-center font-mono text-xs text-gray-500 tracking-widest">NO RESULTS</td></tr>
                 ) : filteredItems.map(item => {
                   const isSelected = selectedIds.has(item.id);
                   return (
                     <tr
                       key={item.id}
                       onClick={() => toggleItem(item.id)}
-                      className={`transition-colors cursor-pointer group ${
+                      className={`transition-colors cursor-pointer group border-l-2 border-b ${
                         isSelected
-                          ? 'bg-indigo-50/60 dark:bg-indigo-900/10'
-                          : 'hover:bg-gray-50/50 dark:hover:bg-gray-800/20'
+                          ? 'bg-blue-500/5 border-l-blue-500 border-b-blue-900/30'
+                          : 'border-l-transparent border-b-gray-800/50 hover:bg-gray-900/50 hover:border-l-gray-700'
                       }`}
                     >
                       {/* Checkbox */}
-                      <td className="pl-5 pr-2 py-4 w-10">
+                      <td className="pl-5 pr-2 py-3 w-10">
                         <Checkbox checked={isSelected} onChange={() => toggleItem(item.id)} />
                       </td>
 
                       {/* Photo */}
-                      <td className="px-6 py-4" onClick={(e) => e.stopPropagation()}>
-                        <a href={item.photo_url} target="_blank" rel="noreferrer" className="block w-12 h-12 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 group-hover:border-blue-300 shrink-0">
+                      <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                        <a href={item.photo_url} target="_blank" rel="noreferrer" className="block w-10 h-10 overflow-hidden border border-gray-800 group-hover:border-gray-700 shrink-0 transition-colors">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={item.photo_url} alt={item.ItemTypes?.name} className="w-full h-full object-cover" />
                         </a>
                       </td>
 
                       {/* Type & Attributes */}
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-gray-900 dark:text-gray-100">{item.ItemTypes?.name}</div>
+                      <td className="px-4 py-3">
+                        <div className="font-medium text-gray-100 text-sm">{item.ItemTypes?.name}</div>
                         {item.attributes?.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1.5">
                             {(() => {
@@ -387,10 +386,10 @@ export default function Dashboard() {
                               return sorted.map((tag: string, i: number) => {
                                 const isParent = tagMeta.get(`${item.item_type_id}:${tag}`) ?? false;
                                 return (
-                                  <span key={i} className={`text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded-sm ${
+                                  <span key={i} className={`font-mono text-[10px] uppercase px-1.5 py-0.5 border ${
                                     isParent
-                                      ? 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800'
-                                      : 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30'
+                                      ? 'text-amber-400 bg-amber-900/20 border-amber-800/60'
+                                      : 'text-blue-400 bg-blue-900/15 border-blue-800/40'
                                   }`}>{tag}</span>
                                 );
                               });
@@ -398,37 +397,37 @@ export default function Dashboard() {
                           </div>
                         )}
                         {item.notes && (
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1.5 max-w-xs truncate italic" title={item.notes}>{item.notes}</div>
+                          <div className="font-mono text-[10px] text-gray-600 mt-1.5 max-w-xs truncate" title={item.notes}>{item.notes}</div>
                         )}
                       </td>
 
                       {/* Condition */}
-                      <td className="px-6 py-4">
+                      <td className="px-4 py-3">
                         <div className="flex flex-col gap-1">
-                          {item.qty_excellent > 0 && <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20 px-2.5 py-1 rounded-full border border-green-200 dark:border-green-800/50 w-max"><span className="font-bold">{item.qty_excellent}</span> Excellent</span>}
-                          {item.qty_good > 0    && <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800/50 w-max"><span className="font-bold">{item.qty_good}</span> Good</span>}
-                          {item.qty_fair > 0    && <span className="inline-flex items-center gap-1.5 text-xs font-medium text-yellow-700 dark:text-yellow-500 bg-yellow-50 dark:bg-yellow-900/20 px-2.5 py-1 rounded-full border border-yellow-200 dark:border-yellow-800/50 w-max"><span className="font-bold">{item.qty_fair}</span> Fair</span>}
-                          {item.qty_poor > 0    && <span className="inline-flex items-center gap-1.5 text-xs font-medium text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 px-2.5 py-1 rounded-full border border-red-200 dark:border-red-800/50 w-max"><span className="font-bold">{item.qty_poor}</span> Poor</span>}
+                          {item.qty_excellent > 0 && <span className="inline-flex items-center gap-1.5 font-mono text-[10px] text-green-400 bg-green-900/15 px-2 py-0.5 border border-green-800/40 w-max"><span className="font-semibold">{item.qty_excellent}</span> EXC</span>}
+                          {item.qty_good > 0    && <span className="inline-flex items-center gap-1.5 font-mono text-[10px] text-blue-400 bg-blue-900/15 px-2 py-0.5 border border-blue-800/40 w-max"><span className="font-semibold">{item.qty_good}</span> GD</span>}
+                          {item.qty_fair > 0    && <span className="inline-flex items-center gap-1.5 font-mono text-[10px] text-yellow-400 bg-yellow-900/15 px-2 py-0.5 border border-yellow-800/40 w-max"><span className="font-semibold">{item.qty_fair}</span> FAIR</span>}
+                          {item.qty_poor > 0    && <span className="inline-flex items-center gap-1.5 font-mono text-[10px] text-red-400 bg-red-900/15 px-2 py-0.5 border border-red-800/40 w-max"><span className="font-semibold">{item.qty_poor}</span> POOR</span>}
                         </div>
                       </td>
 
                       {/* Location */}
-                      <td className="px-6 py-4 min-w-[180px]">
-                        <div className="flex items-center gap-1 text-[11px] text-gray-400 dark:text-gray-500 font-medium mb-1 flex-wrap">
+                      <td className="px-4 py-3 min-w-[180px]">
+                        <div className="flex items-center gap-1 font-mono text-[10px] text-gray-600 mb-1 flex-wrap">
                           {item.Rooms?.level_name && <span>{item.Rooms.level_name}</span>}
-                          {item.Rooms?.level_name && item.Rooms?.building_name && <span className="text-gray-300 dark:text-gray-600">›</span>}
+                          {item.Rooms?.level_name && item.Rooms?.building_name && <span className="text-gray-700">›</span>}
                           {item.Rooms?.building_name && <span>{item.Rooms.building_name}</span>}
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-sm font-semibold text-gray-800 dark:text-gray-100">{item.Rooms?.name}</span>
+                          <span className="text-sm font-medium text-gray-200">{item.Rooms?.name}</span>
                           {item.Rooms?.room_type && (
-                            <span className="text-[10px] uppercase tracking-wider font-semibold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 px-1.5 py-0.5 rounded-sm">{item.Rooms.room_type}</span>
+                            <span className="font-mono text-[10px] uppercase tracking-wide text-blue-400 bg-blue-900/15 border border-blue-800/40 px-1.5 py-0.5">{item.Rooms.room_type}</span>
                           )}
                         </div>
                       </td>
 
                       {/* Added */}
-                      <td className="px-6 py-4 text-sm text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                      <td className="px-4 py-3 font-mono text-[11px] text-gray-600 whitespace-nowrap">
                         {new Date(item.created_at).toLocaleDateString()}
                       </td>
                     </tr>
@@ -442,23 +441,23 @@ export default function Dashboard() {
 
       {/* Floating action bar */}
       {selectedIds.size > 0 && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-gray-900 dark:bg-gray-800 text-white px-5 py-3 rounded-2xl shadow-2xl border border-white/10 animate-in slide-in-from-bottom-2 duration-200">
-          <span className="text-sm font-medium text-gray-300">
-            <span className="text-white font-bold">{selectedIds.size}</span> item{selectedIds.size !== 1 ? 's' : ''} selected
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 flex items-center gap-3 bg-gray-900 border border-gray-700 px-5 py-2.5 animate-in slide-in-from-bottom-2 duration-200">
+          <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-gray-400">
+            <span className="text-gray-100 font-semibold">{selectedIds.size}</span> selected
           </span>
-          <div className="w-px h-4 bg-white/20" />
+          <div className="w-px h-3 bg-gray-700" />
           <button
             onClick={() => setMassEditOpen(true)}
-            className="flex items-center gap-1.5 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-500 px-4 py-1.5 rounded-xl transition-colors"
+            className="flex items-center gap-1.5 font-mono text-[10px] tracking-wider uppercase text-blue-400 border border-blue-700/50 hover:border-blue-500 bg-blue-600/5 hover:bg-blue-600/15 px-3 py-1.5 transition-colors"
           >
-            <Pencil size={14} /> Mass Edit
+            <Pencil size={11} /> Mass Edit
           </button>
           <button
             onClick={clearSelection}
-            className="text-gray-400 hover:text-white transition-colors p-1"
+            className="text-gray-600 hover:text-gray-300 transition-colors p-0.5"
             title="Clear selection"
           >
-            <X size={14} />
+            <X size={13} />
           </button>
         </div>
       )}

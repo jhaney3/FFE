@@ -13,19 +13,33 @@ interface Props {
   onSelect: (type: string | null, parent: string | null, attribute: string | null) => void;
   floorplanId?: string | null;
   pageNumber?: number;
+  // Controlled mode — if isOpen is provided, the trigger button is not rendered
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export default function ItemTypeFilter({
   items, activeType, activeParent, activeAttribute, onSelect, floorplanId, pageNumber = 1,
+  isOpen: controlledOpen, onClose,
 }: Props) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [expandedType, setExpandedType] = useState<string | null>(null);
   const [expandedParent, setExpandedParent] = useState<string | null>(null);
 
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+
+  const closePanel = () => {
+    if (isControlled) {
+      onClose?.();
+    } else {
+      setInternalOpen(false);
+    }
+  };
+
   // tagMeta: `${item_type_id}:${name}` → true  (only is_parent=true entries stored)
   const [tagMeta, setTagMeta] = useState<Map<string, boolean>>(new Map());
-  // typesWithParents: Set of item_type_ids that have at least one is_parent tag
   const [typesWithParents, setTypesWithParents] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -47,13 +61,10 @@ export default function ItemTypeFilter({
       });
   }, [items]);
 
-  // ── Build 3-level typeData ────────────────────────────────────────────────
   const typeData = useMemo(() => {
-    // typeId: typeName
     const typeNameMap = new Map<string, string>();
     items.forEach(i => { if (i.item_type_id && i.ItemTypes?.name) typeNameMap.set(i.item_type_id, i.ItemTypes.name); });
 
-    // typeName → { total, hasParents, parentGroups: Map<parentAttr, { total, combos: Map<fullCombo, count> }> }
     const typeMap = new Map<string, {
       total: number;
       typeId: string;
@@ -61,42 +72,41 @@ export default function ItemTypeFilter({
       parentGroups: Map<string, { total: number; combos: Map<string, number> }>;
     }>();
 
-    for (const item of items) {
+    items.forEach(item => {
+      const typeId   = item.item_type_id;
       const typeName = item.ItemTypes?.name;
-      if (!typeName) continue;
+      if (!typeId || !typeName) return;
+
       const qty = (item.qty_excellent || 0) + (item.qty_good || 0) + (item.qty_fair || 0) + (item.qty_poor || 0);
-
       if (!typeMap.has(typeName)) {
-        typeMap.set(typeName, { total: 0, typeId: item.item_type_id, hasParents: false, parentGroups: new Map() });
+        typeMap.set(typeName, { total: 0, typeId, hasParents: typesWithParents.has(typeId), parentGroups: new Map() });
       }
-      const te = typeMap.get(typeName)!;
-      te.total += qty;
-
-      const hasParents = typesWithParents.has(item.item_type_id);
-      if (hasParents) te.hasParents = true;
+      const td = typeMap.get(typeName)!;
+      td.total += qty;
 
       const attrs: string[] = item.attributes || [];
-      const parentAttr = hasParents
-        ? (attrs.find(a => tagMeta.get(`${item.item_type_id}:${a}`)) || '(ungrouped)')
-        : '(flat)'; // sentinel: no parent level
+      const comboKey = attrs.join(', ') || '';
+      const parentAttr = attrs.find(a => tagMeta.get(`${typeId}:${a}`)) ?? '(ungrouped)';
 
-      const fullCombo = attrs.length > 0 ? [...attrs].sort().join(', ') : '(no attributes)';
-
-      if (!te.parentGroups.has(parentAttr)) te.parentGroups.set(parentAttr, { total: 0, combos: new Map() });
-      const pg = te.parentGroups.get(parentAttr)!;
+      if (!td.parentGroups.has(parentAttr)) td.parentGroups.set(parentAttr, { total: 0, combos: new Map() });
+      const pg = td.parentGroups.get(parentAttr)!;
       pg.total += qty;
-      pg.combos.set(fullCombo, (pg.combos.get(fullCombo) || 0) + qty);
-    }
+      pg.combos.set(comboKey, (pg.combos.get(comboKey) ?? 0) + qty);
+    });
 
     return Array.from(typeMap.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([name, data]) => ({
+      .map(([name, td]) => ({
         name,
-        total: data.total,
-        typeId: data.typeId,
-        hasParents: data.hasParents,
-        parentGroups: Array.from(data.parentGroups.entries())
-          .sort(([a], [b]) => a === '(ungrouped)' ? 1 : b === '(ungrouped)' ? -1 : a.localeCompare(b))
+        total: td.total,
+        typeId: td.typeId,
+        hasParents: td.hasParents,
+        parentGroups: Array.from(td.parentGroups.entries())
+          .sort(([a], [b]) => {
+            if (a === '(ungrouped)') return 1;
+            if (b === '(ungrouped)') return -1;
+            return a.localeCompare(b);
+          })
           .map(([parentAttr, pg]) => ({
             parentAttr,
             total: pg.total,
@@ -126,81 +136,87 @@ export default function ItemTypeFilter({
 
   const handleClear = () => { onSelect(null, null, null); setExpandedType(null); setExpandedParent(null); };
 
-  if (!open) {
+  // ── Uncontrolled trigger button (legacy standalone use) ──────────────────
+  if (!isControlled && !open) {
     return (
       <button
-        onClick={() => setOpen(true)}
-        className={`absolute bottom-20 left-6 z-20 flex items-center gap-2 px-3.5 py-2 rounded-full shadow-lg backdrop-blur-md text-sm font-semibold border transition-all ${
+        onClick={() => setInternalOpen(true)}
+        className={`absolute bottom-20 left-5 z-20 flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] tracking-wider uppercase border transition-colors surface-raised ${
           activeType
-            ? 'bg-indigo-600 text-white border-indigo-500 shadow-indigo-500/40'
-            : 'bg-white/90 dark:bg-black/90 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-800 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400'
+            ? 'bg-blue-500/15 text-blue-400 border-blue-500'
+            : 'bg-gray-900 text-gray-500 border-gray-700 hover:border-gray-500 hover:text-gray-300'
         }`}
       >
-        <SlidersHorizontal size={15} />
-        <span>
-          {activeType
-            ? activeParent
-              ? activeAttribute
-                ? `${activeType} › ${activeParent} › ${childDisplayLabel(activeAttribute, activeParent)}`
-                : `${activeType} › ${activeParent}`
-              : activeType
-            : 'Spotlight'}
-        </span>
-        {activeType && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+        <SlidersHorizontal size={11} />
+        {activeType
+          ? activeParent
+            ? activeAttribute
+              ? `${activeType} › ${childDisplayLabel(activeAttribute, activeParent)}`
+              : `${activeType} › ${activeParent}`
+            : activeType
+          : 'Spotlight'}
+        {activeType && <span className="w-1 h-1 rounded-full bg-blue-400 animate-pulse" />}
       </button>
     );
   }
 
+  if (!open) return null;
+
+  // ── Panel ─────────────────────────────────────────────────────────────────
+  const panelClass = isControlled
+    ? 'absolute bottom-14 left-5 z-20 w-72 bg-gray-900 border border-gray-700 surface-raised'
+    : 'absolute bottom-20 left-5 z-20 w-72 bg-gray-900 border border-gray-700 surface-raised';
+
   return (
-    <div className="absolute bottom-20 left-6 z-20 w-72 bg-white/95 dark:bg-gray-950/95 backdrop-blur-md border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl">
+    <div className={panelClass}>
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100 dark:border-gray-800">
+      <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-800">
         <div className="flex items-center gap-2">
-          <SlidersHorizontal size={14} className="text-indigo-500" />
-          <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">Spotlight Filter</span>
+          <SlidersHorizontal size={12} className="text-blue-500" />
+          <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-gray-400">Spotlight Filter</span>
         </div>
         <div className="flex items-center gap-1">
           {activeType && floorplanId && (
             <button
               onClick={handleExport}
               title="Export spotlight map"
-              className="p-1 text-indigo-500 hover:text-indigo-700 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+              className="p-1 text-gray-500 hover:text-blue-400 transition-colors"
             >
-              <FileOutput size={14} />
+              <FileOutput size={13} />
             </button>
           )}
           {activeType && (
             <button
               onClick={handleClear}
-              className="text-xs text-indigo-500 hover:text-indigo-700 font-medium px-1.5 py-0.5 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+              className="font-mono text-[10px] tracking-wider uppercase text-gray-600 hover:text-gray-300 px-1.5 py-0.5 border border-transparent hover:border-gray-700 transition-colors"
             >
               Clear
             </button>
           )}
           <button
-            onClick={() => setOpen(false)}
-            className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            onClick={closePanel}
+            className="p-1 text-gray-600 hover:text-gray-300 transition-colors"
           >
-            <X size={14} />
+            <X size={13} />
           </button>
         </div>
       </div>
 
       {/* Search */}
-      <div className="px-3 py-2 border-b border-gray-100 dark:border-gray-800">
+      <div className="px-3 py-2 border-b border-gray-800">
         <input
           type="text"
           placeholder="Search item types…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-gray-700 dark:text-gray-300 placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+          className="w-full font-mono text-[11px] px-2.5 py-1.5 border border-gray-700 bg-gray-950 text-gray-300 placeholder:text-gray-700 outline-none focus:border-blue-600 transition-colors"
         />
       </div>
 
       {/* List */}
-      <div className="max-h-80 overflow-y-scroll rounded-b-2xl custom-scrollbar">
+      <div className="max-h-72 overflow-y-scroll custom-scrollbar">
         {filtered.length === 0 ? (
-          <div className="py-4 text-center text-xs text-gray-400">No item types found</div>
+          <div className="py-4 text-center font-mono text-[10px] text-gray-600 tracking-widest">NO TYPES FOUND</div>
         ) : (
           filtered.map(type => {
             const isTypeActive = activeType === type.name;
@@ -208,42 +224,42 @@ export default function ItemTypeFilter({
 
             return (
               <div key={type.name}>
-                {/* ── Type row ── */}
+                {/* Type row */}
                 <button
                   onClick={() => {
                     onSelect(type.name, null, null);
                     setExpandedType(prev => prev === type.name ? null : type.name);
                     setExpandedParent(null);
                   }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
-                    isTypeActive && !activeParent && !activeAttribute ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
+                  className={`w-full flex items-center gap-2 px-3 py-2 text-left transition-colors ${
+                    isTypeActive && !activeParent && !activeAttribute
+                      ? 'bg-blue-500/8 border-l-2 border-blue-500'
+                      : 'hover:bg-gray-800/50 border-l-2 border-transparent'
                   }`}
                 >
-                  <span className={`w-2 h-2 rounded-full border shrink-0 transition-colors ${
-                    isTypeActive && !activeParent ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300 dark:border-gray-600'
+                  <span className={`w-1.5 h-1.5 rounded-full border shrink-0 transition-colors ${
+                    isTypeActive && !activeParent ? 'bg-blue-500 border-blue-500' : 'border-gray-600'
                   }`} />
-                  <span className={`flex-1 text-xs font-medium truncate ${
-                    isTypeActive && !activeParent ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300'
+                  <span className={`flex-1 text-xs truncate ${
+                    isTypeActive && !activeParent ? 'text-blue-400 font-medium' : 'text-gray-300'
                   }`}>{type.name}</span>
-                  <span className="text-[10px] text-gray-400 font-medium shrink-0">{type.total}</span>
+                  <span className="font-mono text-[10px] text-gray-600 shrink-0">{type.total}</span>
                   {isExpanded
-                    ? <ChevronDown size={12} className="text-gray-300 dark:text-gray-600 shrink-0" />
-                    : <ChevronRight size={12} className="text-gray-300 dark:text-gray-600 shrink-0" />
+                    ? <ChevronDown size={11} className="text-gray-600 shrink-0" />
+                    : <ChevronRight size={11} className="text-gray-600 shrink-0" />
                   }
                 </button>
 
-                {/* ── Expanded content ── */}
+                {/* Expanded content */}
                 {isExpanded && (
                   type.hasParents ? (
-                    // ── 3-level: parent groups ──
                     type.parentGroups.map(pg => {
-                      const isParentActive    = isTypeActive && activeParent === pg.parentAttr;
-                      const isParentExpanded  = expandedParent === `${type.name}::${pg.parentAttr}` || isParentActive;
-                      const isUngrouped       = pg.parentAttr === '(ungrouped)';
+                      const isParentActive   = isTypeActive && activeParent === pg.parentAttr;
+                      const isParentExpanded = expandedParent === `${type.name}::${pg.parentAttr}` || isParentActive;
+                      const isUngrouped      = pg.parentAttr === '(ungrouped)';
 
                       return (
                         <div key={pg.parentAttr}>
-                          {/* Parent attr row */}
                           <button
                             onClick={() => {
                               onSelect(type.name, pg.parentAttr, null);
@@ -253,26 +269,28 @@ export default function ItemTypeFilter({
                                   : `${type.name}::${pg.parentAttr}`
                               );
                             }}
-                            className={`w-full flex items-center gap-2 pl-6 pr-3 py-1.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
-                              isParentActive && !activeAttribute ? 'bg-amber-50 dark:bg-amber-900/20' : ''
+                            className={`w-full flex items-center gap-2 pl-6 pr-3 py-1.5 text-left transition-colors ${
+                              isParentActive && !activeAttribute
+                                ? 'bg-amber-900/15 border-l-2 border-amber-500'
+                                : 'hover:bg-gray-800/50 border-l-2 border-transparent'
                             }`}
                           >
                             <span className={`w-1.5 h-1.5 rounded-full border shrink-0 ${
                               isParentActive && !activeAttribute
                                 ? 'bg-amber-500 border-amber-500'
-                                : 'border-gray-300 dark:border-gray-600'
+                                : 'border-gray-600'
                             }`} />
-                            <span className={`flex-1 text-[11px] font-semibold truncate ${
+                            <span className={`flex-1 text-[11px] truncate ${
                               isParentActive && !activeAttribute
-                                ? 'text-amber-700 dark:text-amber-300'
+                                ? 'text-amber-400 font-medium'
                                 : isUngrouped
-                                  ? 'text-gray-400 italic'
-                                  : 'text-gray-600 dark:text-gray-400'
+                                  ? 'text-gray-600 italic'
+                                  : 'text-gray-400'
                             }`}>{pg.parentAttr}</span>
-                            <span className="text-[10px] text-gray-400">{pg.total}</span>
+                            <span className="font-mono text-[10px] text-gray-600">{pg.total}</span>
                             {isParentExpanded
-                              ? <ChevronDown size={11} className="text-gray-300 dark:text-gray-600 shrink-0" />
-                              : <ChevronRight size={11} className="text-gray-300 dark:text-gray-600 shrink-0" />
+                              ? <ChevronDown size={10} className="text-gray-600 shrink-0" />
+                              : <ChevronRight size={10} className="text-gray-600 shrink-0" />
                             }
                           </button>
 
@@ -284,17 +302,19 @@ export default function ItemTypeFilter({
                               <button
                                 key={fullCombo}
                                 onClick={() => onSelect(type.name, pg.parentAttr, fullCombo)}
-                                className={`w-full flex items-center gap-2 pl-10 pr-3 py-1.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
-                                  isActive ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
+                                className={`w-full flex items-center gap-2 pl-10 pr-3 py-1.5 text-left transition-colors ${
+                                  isActive
+                                    ? 'bg-blue-500/8 border-l-2 border-blue-500'
+                                    : 'hover:bg-gray-800/50 border-l-2 border-transparent'
                                 }`}
                               >
                                 <span className={`w-1.5 h-1.5 rounded-full border shrink-0 ${
-                                  isActive ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300 dark:border-gray-600'
+                                  isActive ? 'bg-blue-500 border-blue-500' : 'border-gray-600'
                                 }`} />
                                 <span className={`flex-1 text-[11px] truncate ${
-                                  isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'
+                                  isActive ? 'text-blue-400' : 'text-gray-500'
                                 }`}>{label}</span>
-                                <span className="text-[10px] text-gray-400">{count}</span>
+                                <span className="font-mono text-[10px] text-gray-600">{count}</span>
                               </button>
                             );
                           })}
@@ -302,24 +322,25 @@ export default function ItemTypeFilter({
                       );
                     })
                   ) : (
-                    // ── Flat combos (no parent attrs defined for this type) ──
                     type.parentGroups[0]?.combos.map(({ fullCombo, count }) => {
                       const isActive = isTypeActive && activeAttribute === fullCombo;
                       return (
                         <button
                           key={fullCombo}
                           onClick={() => onSelect(type.name, null, fullCombo)}
-                          className={`w-full flex items-center gap-2 pl-7 pr-3 py-1.5 text-left hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors ${
-                            isActive ? 'bg-indigo-50 dark:bg-indigo-900/20' : ''
+                          className={`w-full flex items-center gap-2 pl-7 pr-3 py-1.5 text-left transition-colors ${
+                            isActive
+                              ? 'bg-blue-500/8 border-l-2 border-blue-500'
+                              : 'hover:bg-gray-800/50 border-l-2 border-transparent'
                           }`}
                         >
                           <span className={`w-1.5 h-1.5 rounded-full border shrink-0 ${
-                            isActive ? 'bg-indigo-500 border-indigo-500' : 'border-gray-300 dark:border-gray-600'
+                            isActive ? 'bg-blue-500 border-blue-500' : 'border-gray-600'
                           }`} />
                           <span className={`flex-1 text-[11px] truncate ${
-                            isActive ? 'text-indigo-600 dark:text-indigo-400' : 'text-gray-500 dark:text-gray-400'
+                            isActive ? 'text-blue-400' : 'text-gray-500'
                           }`}>{fullCombo}</span>
-                          <span className="text-[10px] text-gray-400">{count}</span>
+                          <span className="font-mono text-[10px] text-gray-600">{count}</span>
                         </button>
                       );
                     })

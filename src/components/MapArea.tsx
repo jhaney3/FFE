@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import RoomZone from '@/components/RoomZone';
 import PdfUploader from './PdfUploader';
 import NewZoneModal from './NewZoneModal';
-import { Layers, ShieldAlert, Trash2, ChevronLeft, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize, Package, Tag } from 'lucide-react';
+import { Layers, ShieldAlert, Trash2, ChevronLeft, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize, Package, Tag, SlidersHorizontal } from 'lucide-react';
 import AssetSidebar from './AssetSidebar';
 import ItemTypeFilter from './ItemTypeFilter';
 import TagManagerModal from './TagManagerModal';
@@ -25,6 +25,8 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
   const [pendingZoneParams, setPendingZoneParams] = useState<{x: number, y: number, width: number, height: number} | null>(null);
   const [editingRoom, setEditingRoom] = useState<any | null>(null);
   const [assetSidebarOpen, setAssetSidebarOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
+  const [spotlightOpen, setSpotlightOpen] = useState(false);
   const [activeSpotlightType, setActiveSpotlightType]           = useState<string | null>(null);
   const [activeSpotlightParent, setActiveSpotlightParent]       = useState<string | null>(null);
   const [activeSpotlightAttribute, setActiveSpotlightAttribute] = useState<string | null>(null);
@@ -212,23 +214,23 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
   const activePlan = floorPlans.find(fp => fp.id === activePlanId);
 
   return (
-    <div className="flex-1 flex flex-col h-full bg-gray-50 dark:bg-gray-900 border-l border-gray-200 dark:border-gray-800 min-w-0">
+    <div className="flex-1 flex flex-col h-full bg-gray-900 border-l border-gray-800 min-w-0">
       {/* Collapsible floor plan controls */}
-      <div className="shrink-0 bg-white dark:bg-gray-950 border-b border-gray-200 dark:border-gray-800 shadow-sm z-10 w-full">
+      <div className="shrink-0 bg-gray-950 border-b border-gray-800 z-10 w-full">
         <div
-          style={{ maxHeight: controlsOpen ? '80px' : '0px', transition: 'max-height 0.2s ease-in-out' }}
+          style={{ maxHeight: controlsOpen ? '48px' : '0px', transition: 'max-height 0.2s ease-in-out' }}
           className="overflow-hidden"
         >
-          <div className="py-3 px-6 flex flex-wrap gap-2 items-center justify-between w-full">
+          <div className="py-2 px-4 flex flex-wrap gap-1.5 items-center justify-between w-full">
             <div className="flex flex-wrap gap-2 items-center">
               {floorPlans.map(plan => (
                 <button
                   key={plan.id}
                   onClick={() => setActivePlanId(plan.id)}
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                  className={`px-3 py-1 font-mono text-[10px] tracking-wider uppercase border transition-colors ${
                     activePlanId === plan.id
-                      ? 'bg-blue-50 text-blue-600 border border-blue-200 shadow-sm dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800/50'
-                      : 'text-gray-600 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800'
+                      ? 'border-blue-500 bg-blue-500/10 text-blue-400'
+                      : 'border-gray-700 text-gray-500 hover:border-gray-600 hover:text-gray-300'
                   }`}
                 >
                   {plan.name}
@@ -240,7 +242,7 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
               <button
                 onClick={deleteActivePlan}
                 title="Delete Floor Plan"
-                className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
+                className="p-2 text-gray-600 hover:text-red-400 hover:bg-red-900/20 border border-transparent hover:border-red-800 transition-colors"
               >
                 <Trash2 size={16} />
               </button>
@@ -251,7 +253,7 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
         {/* Toggle strip */}
         <button
           onClick={() => setControlsOpen(o => !o)}
-          className="w-full flex items-center justify-center gap-1 py-0.5 text-[11px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-900/50 transition-colors"
+          className="w-full flex items-center justify-center gap-1 py-1 font-mono text-[9px] tracking-[0.15em] uppercase text-gray-600 hover:text-gray-400 hover:bg-gray-900/60 transition-colors"
         >
           <ChevronDown
             size={12}
@@ -261,7 +263,7 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
         </button>
       </div>
 
-      <div className="flex-1 overflow-hidden bg-gray-100 dark:bg-gray-950 flex flex-col items-center justify-center pattern-dots relative">
+      <div className="flex-1 overflow-hidden flex flex-col items-center justify-center pattern-dots relative">
         {activePlan ? (
           <TransformWrapper
             initialScale={1}
@@ -274,13 +276,13 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
             {({ zoomIn, zoomOut, resetTransform }) => (
               <>
                 {/* Zoom controls */}
-                <div className="absolute top-6 right-6 flex flex-col gap-2 z-20 bg-white/90 dark:bg-black/90 p-1.5 rounded-xl shadow-lg border border-gray-200 dark:border-gray-800 backdrop-blur-md">
-                  <button onClick={() => zoomIn()} className="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"><ZoomIn size={20}/></button>
-                  <button onClick={() => zoomOut()} className="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"><ZoomOut size={20}/></button>
-                  <button onClick={() => resetTransform()} className="p-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"><Maximize size={20}/></button>
+                <div className="absolute top-5 right-5 flex flex-col z-20 bg-gray-900 border border-gray-700 surface-raised overflow-hidden">
+                  <button onClick={() => zoomIn()} className="p-2.5 text-gray-400 hover:bg-gray-800 hover:text-gray-200 border-b border-gray-700 transition-colors"><ZoomIn size={16}/></button>
+                  <button onClick={() => zoomOut()} className="p-2.5 text-gray-400 hover:bg-gray-800 hover:text-gray-200 border-b border-gray-700 transition-colors"><ZoomOut size={16}/></button>
+                  <button onClick={() => resetTransform()} className="p-2.5 text-gray-400 hover:bg-gray-800 hover:text-gray-200 transition-colors"><Maximize size={16}/></button>
                 </div>
 
-                {/* Spotlight filter panel — bottom-left, above Admin */}
+                {/* Spotlight panel — controlled by hub */}
                 <ItemTypeFilter
                   items={items}
                   activeType={activeSpotlightType}
@@ -293,61 +295,114 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
                   }}
                   floorplanId={activePlanId}
                   pageNumber={pageNumber}
+                  isOpen={spotlightOpen}
+                  onClose={() => setSpotlightOpen(false)}
                 />
 
-                {/* Admin mode — floating bottom-left */}
-                <div className="absolute bottom-6 left-6 z-20 flex items-center gap-2">
+                {/* ── Tools hub — flowers into Admin / Tags / Spotlight ── */}
+                <div className="absolute bottom-5 left-5 z-20 flex flex-col-reverse items-start gap-1.5">
+
+                  {/* Hub trigger */}
                   <button
-                    onClick={() => setIsAdminMode(m => !m)}
-                    className={`flex items-center gap-2 px-3.5 py-2 rounded-full shadow-lg backdrop-blur-md text-sm font-semibold border transition-all ${
-                      isAdminMode
-                        ? 'bg-indigo-600 text-white border-indigo-500 shadow-indigo-500/40'
-                        : 'bg-white/90 dark:bg-black/90 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-800 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400'
+                    onClick={() => setToolsOpen(o => !o)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] tracking-wider uppercase border transition-colors surface-raised ${
+                      toolsOpen || isAdminMode || !!activeSpotlightType
+                        ? 'bg-blue-500/15 text-blue-400 border-blue-500'
+                        : 'bg-gray-900 text-gray-500 border-gray-700 hover:border-gray-500 hover:text-gray-300'
                     }`}
                   >
-                    <ShieldAlert size={15} />
-                    <span>Admin</span>
-                    {isAdminMode && <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />}
+                    <SlidersHorizontal size={11} />
+                    Tools
+                    {(isAdminMode || !!activeSpotlightType) && (
+                      <span className="w-1 h-1 rounded-full bg-blue-400" />
+                    )}
                   </button>
-                  <button
-                    onClick={() => setTagManagerOpen(true)}
-                    className="flex items-center gap-2 px-3.5 py-2 rounded-full shadow-lg backdrop-blur-md text-sm font-semibold border transition-all bg-white/90 dark:bg-black/90 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-800 hover:border-indigo-400 hover:text-indigo-600 dark:hover:text-indigo-400"
-                  >
-                    <Tag size={15} />
-                    <span>Tags</span>
-                  </button>
+
+                  {/* Flowering items — stagger from hub upward */}
+                  {([
+                    {
+                      label: 'Admin',
+                      icon: ShieldAlert,
+                      active: isAdminMode,
+                      onClick: () => setIsAdminMode(m => !m),
+                      dot: isAdminMode,
+                    },
+                    {
+                      label: 'Tags',
+                      icon: Tag,
+                      active: false,
+                      onClick: () => { setTagManagerOpen(true); setToolsOpen(false); },
+                      dot: false,
+                    },
+                    {
+                      label: 'Spotlight',
+                      icon: SlidersHorizontal,
+                      active: !!activeSpotlightType,
+                      onClick: () => { setSpotlightOpen(true); setToolsOpen(false); },
+                      dot: !!activeSpotlightType,
+                    },
+                  ] as const).map((item, i) => (
+                    <div
+                      key={item.label}
+                      style={{
+                        transform: toolsOpen ? 'translateY(0)' : 'translateY(6px)',
+                        opacity: toolsOpen ? 1 : 0,
+                        pointerEvents: toolsOpen ? 'auto' : 'none',
+                        transition: [
+                          `transform 140ms ease ${toolsOpen ? i * 40 : (2 - i) * 30}ms`,
+                          `opacity 140ms ease ${toolsOpen ? i * 40 : (2 - i) * 30}ms`,
+                        ].join(', '),
+                      }}
+                    >
+                      <button
+                        onClick={item.onClick}
+                        className={`group/btn flex items-center overflow-hidden border transition-all surface-raised ${
+                          item.active
+                            ? 'bg-blue-500/15 text-blue-400 border-blue-500'
+                            : 'bg-gray-900 text-gray-500 border-gray-700 hover:border-gray-500 hover:text-gray-300'
+                        }`}
+                        style={{ padding: '6px 8px' }}
+                      >
+                        <item.icon size={11} className="shrink-0" />
+                        <span className="font-mono text-[10px] tracking-wider uppercase max-w-0 overflow-hidden whitespace-nowrap group-hover/btn:max-w-[80px] group-hover/btn:ml-1.5 transition-all duration-200">
+                          {item.label}
+                        </span>
+                        {item.dot && <span className="ml-1 w-1 h-1 bg-blue-400 animate-pulse shrink-0" />}
+                      </button>
+                    </div>
+                  ))}
                 </div>
 
                 {/* Assets FAB — floating bottom-right */}
                 <button
                   onClick={() => setAssetSidebarOpen(o => !o)}
-                  className={`absolute bottom-6 right-6 z-20 flex items-center gap-2 px-3.5 py-2 rounded-full shadow-lg backdrop-blur-md text-sm font-semibold border transition-all ${
+                  className={`absolute bottom-5 right-5 z-20 flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] tracking-wider uppercase border transition-colors surface-raised ${
                     assetSidebarOpen
-                      ? 'bg-amber-500 text-white border-amber-400 shadow-amber-500/40'
-                      : 'bg-white/90 dark:bg-black/90 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-800 hover:border-amber-400 hover:text-amber-600 dark:hover:text-amber-400'
+                      ? 'bg-amber-500/15 text-amber-400 border-amber-500'
+                      : 'bg-gray-900 text-gray-500 border-gray-700 hover:border-amber-600 hover:text-amber-400'
                   }`}
                 >
-                  <Package size={15} />
-                  <span>Assets</span>
+                  <Package size={12} />
+                  Assets
                 </button>
 
                 {/* Page switcher — bottom-center */}
                 {numPages > 1 && (
-                  <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-4 z-20 bg-white/90 dark:bg-black/90 px-4 py-2 rounded-full shadow-lg border border-gray-200 dark:border-gray-800 backdrop-blur-md">
+                  <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-3 z-20 bg-gray-900 border border-gray-700 px-3 py-1.5 surface-raised">
                     <button
                       disabled={pageNumber <= 1}
                       onClick={() => setPageNumber(prev => prev - 1)}
-                      className="p-1 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+                      className="text-gray-500 disabled:opacity-25 hover:text-gray-200 transition-colors"
                     >
-                      <ChevronLeft size={20}/>
+                      <ChevronLeft size={14}/>
                     </button>
-                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Page {pageNumber} of {numPages}</span>
+                    <span className="font-mono text-[10px] text-gray-400 tabular-nums tracking-wider">{pageNumber} / {numPages}</span>
                     <button
                       disabled={pageNumber >= numPages}
                       onClick={() => setPageNumber(prev => prev + 1)}
-                      className="p-1 disabled:opacity-30 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+                      className="text-gray-500 disabled:opacity-25 hover:text-gray-200 transition-colors"
                     >
-                      <ChevronRight size={20}/>
+                      <ChevronRight size={14}/>
                     </button>
                   </div>
                 )}
@@ -355,8 +410,8 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
                 <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full flex justify-center items-center">
                   <div 
                     ref={mapRef}
-                    className={`relative inline-block border-2 border-gray-200 dark:border-gray-700 shadow-2xl bg-white ${
-                      isAdminMode ? 'cursor-crosshair border-indigo-500 ring-4 ring-indigo-500/20' : 'cursor-grab active:cursor-grabbing'
+                    className={`relative inline-block border-2 bg-white ${
+                      isAdminMode ? 'cursor-crosshair border-blue-500' : 'cursor-grab active:cursor-grabbing border-gray-700'
                     }`}
                     onMouseDown={handleMouseDown}
                     onMouseMove={handleMouseMove}

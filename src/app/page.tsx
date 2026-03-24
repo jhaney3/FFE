@@ -79,45 +79,59 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-white dark:bg-gray-950 font-sans">
-      <div className="h-14 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 flex items-center px-6 justify-between shrink-0 shadow-sm z-20">
-         <div className="font-bold text-lg tracking-tight flex items-center gap-2 text-gray-900 dark:text-gray-100 hidden md:flex">
-           <Database className="text-blue-600 dark:text-blue-500" size={20} />
-           <span>Church FFE Transition</span>
-         </div>
-         <div className="flex bg-gray-100 dark:bg-gray-900 p-1 rounded-lg">
-           <button 
-             onClick={() => setActiveTab('map')} 
-             className={`flex items-center gap-2 px-5 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'map' ? 'bg-white dark:bg-gray-800 shadow text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
-           >
-             <MapIcon size={16}/> <span className="hidden sm:inline">Map View</span>
-           </button>
-           <button 
-             onClick={() => setActiveTab('list')} 
-             className={`flex items-center gap-2 px-5 py-1.5 rounded-md text-sm font-medium transition-all ${activeTab === 'list' ? 'bg-white dark:bg-gray-800 shadow text-blue-600 dark:text-blue-400' : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'}`}
-           >
-             <LayoutGrid size={16}/> <span className="hidden sm:inline">List View</span>
-           </button>
-         </div>
-         <div className="flex items-center gap-3">
-           {user?.user_metadata?.avatar_url && (
-             // eslint-disable-next-line @next/next/no-img-element
-             <img src={user.user_metadata.avatar_url} alt={user.user_metadata?.full_name} className="w-8 h-8 rounded-full border border-gray-200 dark:border-gray-700" />
-           )}
-           {user && (
-             <span className="text-sm text-gray-600 dark:text-gray-400 hidden md:inline">{user.user_metadata?.full_name || user.email}</span>
-           )}
-           <button
-             onClick={handleSignOut}
-             title="Sign out"
-             className="text-gray-400 hover:text-red-500 transition-colors p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20"
-           >
-             <LogOut size={16} />
-           </button>
-         </div>
+    <div className="flex flex-col h-screen overflow-hidden bg-gray-950 font-sans">
+      <div className="h-11 border-b border-gray-800 bg-gray-950 flex items-center px-5 justify-between shrink-0 z-20">
+        <div className="hidden md:flex items-center gap-3">
+          <Database size={13} className="text-blue-500 shrink-0" />
+          <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-gray-400">
+            FFE <span className="text-gray-700 mx-1.5">·</span> Transition Registry
+          </span>
+          <div className="flex items-center gap-1 border-l border-gray-800 pl-3">
+            <div className="w-1.5 h-1.5 rounded-full bg-green-500 opacity-80" />
+            <span className="font-mono text-[9px] tracking-widest uppercase text-gray-600">Live</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-px">
+          <button
+            onClick={() => setActiveTab('map')}
+            className={`flex items-center gap-1.5 px-4 py-1.5 font-mono text-[10px] tracking-[0.12em] uppercase border transition-colors ${
+              activeTab === 'map'
+                ? 'border-blue-600 bg-blue-600/10 text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-300 hover:bg-gray-900'
+            }`}
+          >
+            <MapIcon size={11} /> Map
+          </button>
+          <button
+            onClick={() => setActiveTab('list')}
+            className={`flex items-center gap-1.5 px-4 py-1.5 font-mono text-[10px] tracking-[0.12em] uppercase border transition-colors ${
+              activeTab === 'list'
+                ? 'border-blue-600 bg-blue-600/10 text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-300 hover:bg-gray-900'
+            }`}
+          >
+            <LayoutGrid size={11} /> List
+          </button>
+        </div>
+        <div className="flex items-center gap-3">
+          {user?.user_metadata?.avatar_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={user.user_metadata.avatar_url} alt={user.user_metadata?.full_name} className="w-6 h-6 rounded-full opacity-70 border border-gray-700" />
+          )}
+          {user && (
+            <span className="font-mono text-[10px] text-gray-500 hidden md:inline tracking-wide">{user.user_metadata?.full_name || user.email}</span>
+          )}
+          <button
+            onClick={handleSignOut}
+            title="Sign out"
+            className="text-gray-600 hover:text-gray-300 transition-colors p-1"
+          >
+            <LogOut size={13} />
+          </button>
+        </div>
       </div>
 
-      <main className="flex-1 w-full bg-white dark:bg-gray-950 relative flex min-h-0 min-w-0">
+      <main className="flex-1 w-full bg-gray-950 relative flex min-h-0 min-w-0">
         {activeTab === 'map' ? (
           <DndContext
             sensors={sensors}
@@ -131,21 +145,21 @@ export default function Home() {
             
             <DragOverlay dropAnimation={null}>
               {activePhoto ? (
-                <div className="w-10 h-10 rounded-full overflow-hidden bg-white shadow-2xl cursor-grabbing ring-2 ring-blue-500 flex items-center justify-center relative pointer-events-none">
+                <div className="w-10 h-10 overflow-hidden bg-gray-900 cursor-grabbing border border-blue-500 flex items-center justify-center relative pointer-events-none">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={activePhoto.photo_url} alt="Dragging item" className="w-full h-full object-cover opacity-60" />
-                  <div className="absolute inset-0 flex items-center justify-center bg-blue-500/30">
-                    <span className="text-white drop-shadow-md"><LayoutGrid size={14} /></span>
+                  <div className="absolute inset-0 flex items-center justify-center bg-blue-500/20">
+                    <span className="text-blue-400"><LayoutGrid size={13} /></span>
                   </div>
                 </div>
               ) : activeAsset ? (
-                <div className="w-14 h-14 rounded-xl overflow-hidden bg-white shadow-2xl cursor-grabbing ring-2 ring-amber-400 pointer-events-none">
+                <div className="w-14 h-14 overflow-hidden bg-gray-900 cursor-grabbing border border-amber-500/60 pointer-events-none">
                   {activeAsset.photo_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={activeAsset.photo_url} alt={activeAsset.name} className="w-full h-full object-cover opacity-80" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-amber-50">
-                      <LayoutGrid size={18} className="text-amber-400" />
+                    <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                      <LayoutGrid size={16} className="text-amber-400" />
                     </div>
                   )}
                 </div>

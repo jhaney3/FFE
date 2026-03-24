@@ -13,21 +13,17 @@ function Section({ title, enabled, onToggle, icon, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className={`rounded-xl border transition-all ${
-      enabled
-        ? 'border-indigo-200 dark:border-indigo-800 bg-indigo-50/40 dark:bg-indigo-900/10'
-        : 'border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900'
+    <div className={`border transition-all ${
+      enabled ? 'border-blue-700 bg-blue-900/5' : 'border-gray-700 bg-gray-900'
     }`}>
       <button type="button" onClick={onToggle} className="w-full flex items-center justify-between px-4 py-3 text-left">
-        <span className="flex items-center gap-2 text-sm font-semibold text-gray-700 dark:text-gray-300">
+        <span className="flex items-center gap-2 font-mono text-[10px] tracking-[0.12em] uppercase text-gray-400">
           {icon}{title}
         </span>
-        <div className={`w-8 h-4 rounded-full transition-colors relative shrink-0 ${enabled ? 'bg-indigo-500' : 'bg-gray-300 dark:bg-gray-700'}`}>
-          <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all ${enabled ? 'left-4' : 'left-0.5'}`} />
-        </div>
+        <span className={`inline-block w-3 h-3 border transition-colors ${enabled ? 'border-blue-500 bg-blue-500' : 'border-gray-600'}`} />
       </button>
       {enabled && (
-        <div className="px-4 pb-4 pt-3 border-t border-indigo-100 dark:border-indigo-900/40 animate-in fade-in slide-in-from-top-1 duration-150">
+        <div className="px-4 pb-4 pt-3 border-t border-gray-800">
           {children}
         </div>
       )}
@@ -344,16 +340,15 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
-
+    <div className="fixed inset-0 bg-black/75 z-[10000] flex items-center justify-center p-4">
+      <div className="bg-gray-900 w-full max-w-lg border border-gray-700 surface-raised overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+        <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">Mass Edit</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">{savedCount || selectedIds.length} item{(savedCount || selectedIds.length) !== 1 ? 's' : ''} selected</p>
+            <p className="font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500">Mass Edit</p>
+            <p className="text-base font-semibold text-gray-100">{savedCount || selectedIds.length} item{(savedCount || selectedIds.length) !== 1 ? 's' : ''} selected</p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors">
+          <button onClick={onClose} className="p-1.5 text-gray-600 hover:text-gray-200 hover:bg-gray-800 border border-transparent hover:border-gray-700 transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -363,16 +358,16 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
 
             {/* Attributes */}
             <Section title="Set Attributes" enabled={attrsEnabled} onToggle={() => setAttrsEnabled(v => !v)} icon={<Tag size={14} />}>
-              <p className="text-[11px] text-gray-400 mb-2">These tags will replace existing attributes on all selected items.</p>
+              <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500 mb-1.5">These tags will replace existing attributes on all selected items.</p>
               <div className="flex flex-wrap gap-1.5 mb-2">
                 {parentSuggestions.length > 0 && (
                   <div className="w-full">
-                    <span className="text-[10px] font-bold text-amber-600 uppercase tracking-wider mb-1 block">Grouping (pick one)</span>
+                    <span className="font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500 mb-1.5 block">Grouping (pick one)</span>
                     <div className="flex flex-wrap gap-1.5">
                       {parentSuggestions.map(tag => (
                         <button key={tag.name} type="button"
                           onClick={() => addTag(tag.name, true)}
-                          className="text-[11px] px-2 py-1 rounded-full border border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400 transition-colors"
+                          className="font-mono text-[11px] px-2 py-0.5 border border-amber-800 text-amber-600 hover:border-amber-600 hover:text-amber-400 transition-colors"
                         >+ {tag.name}</button>
                       ))}
                     </div>
@@ -381,7 +376,7 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
                 {childSuggestions.map(tag => (
                   <button key={tag.name} type="button"
                     onClick={() => addTag(tag.name, false)}
-                    className="text-[11px] px-2 py-1 rounded-full border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:border-indigo-400 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors"
+                    className="font-mono text-[11px] px-2 py-0.5 border border-gray-700 text-gray-500 hover:border-blue-700 hover:text-blue-400 transition-colors"
                   >+ {tag.name}</button>
                 ))}
                 <input
@@ -396,7 +391,7 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
                   }}
                   onBlur={commitTagInput}
                   placeholder="Custom tag + Enter"
-                  className="text-[11px] px-2 py-1 rounded-full border border-dashed border-gray-300 dark:border-gray-600 outline-none focus:border-indigo-400 w-36 bg-transparent"
+                  className="font-mono text-[11px] px-2 py-0.5 border border-dashed border-gray-600 outline-none focus:border-blue-600 bg-transparent text-gray-300 w-36"
                 />
               </div>
               {tagsToAdd.length > 0 ? (
@@ -404,10 +399,10 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
                   {tagsToAdd.map(tag => {
                     const isParent = parentNames.has(tag);
                     return (
-                      <span key={tag} className={`text-[11px] px-2 py-1 rounded-full flex items-center gap-1 border ${
+                      <span key={tag} className={`font-mono text-[11px] px-2 py-0.5 flex items-center gap-1 border ${
                         isParent
-                          ? 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800'
-                          : 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 border-indigo-200 dark:border-indigo-800'
+                          ? 'border-amber-700 bg-amber-700/10 text-amber-400'
+                          : 'border-blue-700 bg-blue-700/10 text-blue-400'
                       }`}>
                         {tag}
                         <button onClick={() => setTagsToAdd(prev => prev.filter(t => t !== tag))} className="hover:text-red-500 leading-none">×</button>
@@ -416,7 +411,7 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
                   })}
                 </div>
               ) : (
-                <p className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                <p className="font-mono text-[10px] text-amber-500 flex items-center gap-1 border border-amber-900 bg-amber-900/10 px-2 py-1.5">
                   <AlertTriangle size={11} className="shrink-0" /> No tags selected — saving will clear all attributes.
                 </p>
               )}
@@ -424,6 +419,7 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
 
             {/* Item Type */}
             <Section title="Change Item Type" enabled={typeEnabled} onToggle={() => setTypeEnabled(v => !v)} icon={<Layers size={14} />}>
+              <label className="font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500 mb-1.5 block">Item Type</label>
               <div className="relative">
                 <input
                   value={typeSearch}
@@ -431,19 +427,19 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
                   onFocus={() => setTypeDropdownOpen(true)}
                   onBlur={() => setTimeout(() => setTypeDropdownOpen(false), 200)}
                   placeholder="e.g. Chair, Desk..."
-                  className="w-full px-3 py-2 pr-8 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 rounded-lg outline-none focus:border-indigo-400 text-sm"
+                  className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2 outline-none transition-colors text-gray-100 text-sm pr-8"
                 />
                 <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                 {typeDropdownOpen && typeSearch && (
-                  <div className="absolute z-20 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-36 overflow-y-auto">
+                  <div className="absolute z-20 w-full bg-gray-900 border border-gray-700 border-t-0 max-h-36 overflow-y-auto">
                     {filteredTypes.length > 0 ? filteredTypes.map(t => (
                       <button key={t.id} type="button"
                         onMouseDown={() => { setTypeSearch(t.name); setTypeId(t.id); setTypeDropdownOpen(false); }}
-                        className="w-full text-left px-3 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-sm transition-colors"
+                        className="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-300 text-sm transition-colors"
                       >{t.name}</button>
                     )) : (
-                      <div className="px-3 py-2 text-sm text-gray-500 italic">
-                        Create new: <span className="font-semibold text-blue-600 dark:text-blue-400">"{typeSearch}"</span>
+                      <div className="px-3 py-2 text-sm text-gray-500">
+                        Create new: <span className="font-semibold text-blue-400">"{typeSearch}"</span>
                       </div>
                     )}
                   </div>
@@ -453,17 +449,18 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
 
             {/* Quality */}
             <Section title="Reassign Quality" enabled={qualityEnabled} onToggle={() => setQualityEnabled(v => !v)} icon={<ShieldCheck size={14} />}>
+              <label className="font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500 mb-1.5 block">Quality</label>
               <select
                 value={quality}
                 onChange={(e) => setQuality(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 rounded-lg outline-none focus:border-indigo-400 text-sm appearance-none mb-2"
+                className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2 outline-none text-gray-100 text-sm appearance-none mb-2"
               >
                 <option>Excellent</option>
                 <option>Good</option>
                 <option>Fair</option>
                 <option>Poor</option>
               </select>
-              <p className="text-[11px] text-amber-600 dark:text-amber-400 flex items-center gap-1">
+              <p className="font-mono text-[10px] text-amber-500 flex items-center gap-1 border border-amber-900 bg-amber-900/10 px-2 py-1.5">
                 <AlertTriangle size={11} className="shrink-0" />
                 Each item's full quantity is moved to this condition. Split quantities will be collapsed.
               </p>
@@ -471,13 +468,13 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
 
             {/* Footer */}
             <div className="flex gap-2 pt-1">
-              <button onClick={onClose} className="flex-1 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
+              <button onClick={onClose} className="flex-1 py-2 font-mono text-[11px] tracking-wider uppercase border border-gray-700 text-gray-400 hover:text-gray-200 hover:bg-gray-800 transition-colors">
                 Cancel
               </button>
               <button
                 disabled={!canProceed}
                 onClick={() => setStep('confirm')}
-                className="flex-1 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-xl transition-colors"
+                className="flex-1 py-2 font-mono text-[11px] tracking-wider uppercase border border-blue-600 bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
               >
                 Review Changes
               </button>
@@ -485,51 +482,51 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
           </div>
         ) : step === 'confirm' ? (
           // Confirm step
-          <div className="p-6 space-y-4">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Applying to <span className="font-bold text-gray-900 dark:text-gray-100">{selectedIds.length} item{selectedIds.length !== 1 ? 's' : ''}</span>:
+          <div className="p-5 space-y-4">
+            <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500">
+              Applying to <span className="text-gray-100">{selectedIds.length} item{selectedIds.length !== 1 ? 's' : ''}</span>:
             </p>
-            <ul className="space-y-2.5 bg-gray-50 dark:bg-gray-950 rounded-xl p-4 border border-gray-100 dark:border-gray-800">
+            <ul className="space-y-2.5 border border-gray-800 bg-gray-950 p-4">
               {summaryLines.map((line, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
-                  <Check size={15} className="text-green-500 mt-0.5 shrink-0" />
+                <li key={i} className="flex items-start gap-2 font-mono text-[11px] text-gray-400">
+                  <Check size={13} className="text-blue-400 mt-0.5 shrink-0" />
                   {line}
                 </li>
               ))}
             </ul>
             <div className="flex gap-2 pt-1">
-              <button onClick={() => setStep('edit')} className="flex-1 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
+              <button onClick={() => setStep('edit')} className="flex-1 py-2 font-mono text-[11px] tracking-wider uppercase border border-gray-700 text-gray-400 hover:text-gray-200 hover:bg-gray-800 transition-colors">
                 Back
               </button>
               <button
                 disabled={loading}
                 onClick={handleSave}
-                className="flex-1 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                className="flex-1 py-2 font-mono text-[11px] tracking-wider uppercase border border-blue-600 bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
               >
-                {loading ? 'Saving...' : <><Check size={15} /> Apply to {selectedIds.length} Items</>}
+                {loading ? 'Saving...' : <><Check size={13} /> Apply to {selectedIds.length} Items</>}
               </button>
             </div>
           </div>
 
         ) : step === 'asset-exists' ? (
           // Existing asset match
-          <div className="p-6 space-y-4 max-h-[72vh] overflow-y-auto custom-scrollbar">
-            <p className="text-xs font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider">Matches existing asset</p>
-            <div className="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-xl border border-amber-200 dark:border-amber-800">
+          <div className="p-5 space-y-4 max-h-[72vh] overflow-y-auto custom-scrollbar">
+            <p className="font-mono text-[10px] tracking-[0.15em] uppercase text-amber-500">Matches existing asset</p>
+            <div className="border border-amber-800 bg-amber-900/10 p-4 flex items-center gap-3">
               {matchedAsset?.photo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={matchedAsset.photo_url} alt={matchedAsset.name} className="w-14 h-14 rounded-lg object-cover shrink-0" />
+                <img src={matchedAsset.photo_url} alt={matchedAsset.name} className="w-14 h-14 object-cover shrink-0" />
               ) : (
-                <div className="w-14 h-14 rounded-lg bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                <div className="w-14 h-14 bg-gray-800 border border-gray-700 flex items-center justify-center shrink-0">
                   <Package size={20} className="text-amber-500" />
                 </div>
               )}
               <div>
-                <p className="text-sm font-semibold text-gray-800 dark:text-gray-100">{matchedAsset?.name}</p>
+                <p className="text-sm font-medium text-gray-100">{matchedAsset?.name}</p>
                 {matchedAsset?.attributes?.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-1">
                     {matchedAsset.attributes.map((a: string) => (
-                      <span key={a} className="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400 font-medium">{a}</span>
+                      <span key={a} className="font-mono text-[10px] px-1.5 py-0.5 border border-amber-800 text-amber-400">{a}</span>
                     ))}
                   </div>
                 )}
@@ -539,23 +536,21 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
             {/* Photo management for existing asset */}
             {savedItems.some(i => i.photo_url) && (
               <>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Would you like to clean up individual item photos?</p>
+                <p className="font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500">Would you like to clean up individual item photos?</p>
 
                 {/* Convert all toggle */}
                 <button
                   type="button"
                   onClick={() => { setConvertAll(v => !v); setRemovePhotoIds(new Set()); }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 border text-sm transition-all ${
                     convertAll
-                      ? 'bg-indigo-900/40 border-indigo-600 text-indigo-300'
-                      : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-indigo-700'
+                      ? 'border-blue-600 bg-blue-600/10 text-blue-300'
+                      : 'border-gray-700 text-gray-400 hover:border-blue-800'
                   }`}
                 >
-                  <div className={`w-8 h-4 rounded-full transition-colors relative shrink-0 ${convertAll ? 'bg-indigo-500' : 'bg-gray-600'}`}>
-                    <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all ${convertAll ? 'left-4' : 'left-0.5'}`} />
-                  </div>
+                  <span className={`inline-block w-3 h-3 border shrink-0 transition-colors ${convertAll ? 'border-blue-500 bg-blue-500' : 'border-gray-600'}`} />
                   <div className="text-left">
-                    <p className="leading-none">Convert all to asset image</p>
+                    <p className="leading-none font-mono text-[11px] tracking-wider uppercase">Convert all to asset image</p>
                     <p className="text-[11px] text-gray-500 mt-0.5 font-normal">Replace every item photo with the asset representative above</p>
                   </div>
                 </button>
@@ -566,7 +561,7 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
                     {savedItems.filter(i => i.photo_url).map(item => {
                       const willRemove = removePhotoIds.has(item.id);
                       return (
-                        <div key={item.id} className="relative rounded-xl overflow-hidden border-2 border-gray-700">
+                        <div key={item.id} className="relative border-2 border-gray-700 overflow-hidden transition-all">
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img src={item.photo_url} alt="" className="w-full h-20 object-cover" />
                           <div className="p-1.5 bg-gray-900">
@@ -581,8 +576,8 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
                               }}
                               className="flex items-center gap-1.5 w-full cursor-pointer"
                             >
-                              <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
-                                willRemove ? 'bg-indigo-500 border-indigo-500' : 'border-gray-500 bg-gray-800'
+                              <div className={`w-3.5 h-3.5 border flex items-center justify-center shrink-0 transition-colors ${
+                                willRemove ? 'bg-blue-500 border-blue-500' : 'border-gray-500 bg-gray-800'
                               }`}>
                                 {willRemove && <Check size={9} className="text-white" />}
                               </div>
@@ -596,7 +591,7 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
                 )}
 
                 {(convertAll || removePhotoIds.size > 0) && (
-                  <p className="text-[11px] text-amber-500 flex items-center gap-1">
+                  <p className="font-mono text-[10px] text-amber-500 flex items-center gap-1 border border-amber-900 bg-amber-900/10 px-2 py-1.5">
                     <AlertTriangle size={11} className="shrink-0" />
                     {convertAll
                       ? 'All item photos will be permanently replaced with the asset image.'
@@ -607,26 +602,26 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
             )}
 
             <div className="flex gap-2 pt-1">
-              <button onClick={onClose} className="flex-1 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
+              <button onClick={onClose} className="flex-1 py-2 font-mono text-[11px] tracking-wider uppercase border border-gray-700 text-gray-400 hover:text-gray-200 hover:bg-gray-800 transition-colors">
                 Skip
               </button>
               <button
                 disabled={assetLoading}
                 onClick={handleExistingAssetDone}
-                className="flex-1 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                className="flex-1 py-2 font-mono text-[11px] tracking-wider uppercase border border-blue-600 bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
               >
-                {assetLoading ? 'Applying...' : <><Check size={15} /> Done</>}
+                {assetLoading ? 'Applying...' : <><Check size={13} /> Done</>}
               </button>
             </div>
           </div>
 
         ) : (
           // Pick photo step
-          <div className="p-6 space-y-4 max-h-[72vh] overflow-y-auto custom-scrollbar">
+          <div className="p-5 space-y-4 max-h-[72vh] overflow-y-auto custom-scrollbar">
             <div>
-              <p className="text-xs font-bold text-indigo-500 dark:text-indigo-400 uppercase tracking-wider mb-0.5">Create Reusable Asset</p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                All {savedCount} items now share the same type and attributes. Pick a photo to represent <span className="font-semibold text-gray-800 dark:text-gray-200">{postSaveTypeName}</span> as an asset.
+              <p className="font-mono text-[10px] tracking-[0.15em] uppercase text-blue-400 mb-0.5">Create Reusable Asset</p>
+              <p className="text-sm text-gray-400">
+                All {savedCount} items now share the same type and attributes. Pick a photo to represent <span className="font-medium text-gray-200">{postSaveTypeName}</span> as an asset.
               </p>
             </div>
 
@@ -639,8 +634,8 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
                     const willRemove = removePhotoIds.has(item.id);
                     const isRep = isSelected;
                     return (
-                      <div key={item.id} className={`relative rounded-xl overflow-hidden border-2 transition-all ${
-                        isSelected ? 'border-indigo-500' : 'border-gray-700'
+                      <div key={item.id} className={`relative border-2 overflow-hidden transition-all ${
+                        isSelected ? 'border-blue-500' : 'border-gray-700'
                       }`}>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -650,7 +645,7 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
                           onClick={() => setSelectedPhotoItemId(item.id)}
                         />
                         {isSelected && (
-                          <div className="absolute top-1 left-1 w-5 h-5 rounded-full bg-indigo-500 flex items-center justify-center shadow">
+                          <div className="absolute top-1 left-1 w-5 h-5 bg-blue-500 flex items-center justify-center">
                             <Check size={11} className="text-white" />
                           </div>
                         )}
@@ -670,9 +665,9 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
                               }}
                               className={`flex items-center gap-1.5 w-full ${isRep ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
                             >
-                              <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 transition-colors ${
+                              <div className={`w-3.5 h-3.5 border flex items-center justify-center shrink-0 transition-colors ${
                                 willRemove && !isRep
-                                  ? 'bg-indigo-500 border-indigo-500'
+                                  ? 'bg-blue-500 border-blue-500'
                                   : 'border-gray-500 bg-gray-800'
                               }`}>
                                 {willRemove && !isRep && <Check size={9} className="text-white" />}
@@ -690,23 +685,21 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
                 <button
                   type="button"
                   onClick={() => { setConvertAll(v => !v); setRemovePhotoIds(new Set()); }}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-sm font-medium transition-all ${
+                  className={`w-full flex items-center gap-3 px-4 py-3 border text-sm transition-all ${
                     convertAll
-                      ? 'bg-indigo-900/40 border-indigo-600 text-indigo-300'
-                      : 'bg-gray-800 border-gray-700 text-gray-300 hover:border-indigo-700'
+                      ? 'border-blue-600 bg-blue-600/10 text-blue-300'
+                      : 'border-gray-700 text-gray-400 hover:border-blue-800'
                   }`}
                 >
-                  <div className={`w-8 h-4 rounded-full transition-colors relative shrink-0 ${convertAll ? 'bg-indigo-500' : 'bg-gray-600'}`}>
-                    <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all ${convertAll ? 'left-4' : 'left-0.5'}`} />
-                  </div>
+                  <span className={`inline-block w-3 h-3 border shrink-0 transition-colors ${convertAll ? 'border-blue-500 bg-blue-500' : 'border-gray-600'}`} />
                   <div className="text-left">
-                    <p className="leading-none">Convert all to asset image</p>
+                    <p className="leading-none font-mono text-[11px] tracking-wider uppercase">Convert all to asset image</p>
                     <p className="text-[11px] text-gray-500 mt-0.5 font-normal">Replace every other item photo with the representative above</p>
                   </div>
                 </button>
 
                 {(convertAll || removePhotoIds.size > 0) && (
-                  <p className="text-[11px] text-amber-500 flex items-center gap-1">
+                  <p className="font-mono text-[10px] text-amber-500 flex items-center gap-1 border border-amber-900 bg-amber-900/10 px-2 py-1.5">
                     <AlertTriangle size={11} className="shrink-0" />
                     {convertAll
                       ? 'All other item photos will be permanently replaced with the asset image.'
@@ -715,22 +708,22 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
                 )}
               </>
             ) : (
-              <p className="text-sm text-gray-400 italic">No photos available — asset will be created without one.</p>
+              <p className="font-mono text-[11px] text-gray-500">No photos available — asset will be created without one.</p>
             )}
 
             <div className="flex gap-2 pt-1">
               <button
                 onClick={onClose}
-                className="flex-1 py-2.5 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors"
+                className="flex-1 py-2 font-mono text-[11px] tracking-wider uppercase border border-gray-700 text-gray-400 hover:text-gray-200 hover:bg-gray-800 transition-colors"
               >
                 Skip
               </button>
               <button
                 disabled={assetLoading}
                 onClick={handleCreateAsset}
-                className="flex-1 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                className="flex-1 py-2 font-mono text-[11px] tracking-wider uppercase border border-blue-600 bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
               >
-                {assetLoading ? 'Creating...' : <><Check size={15} /> Create Asset</>}
+                {assetLoading ? 'Creating...' : <><Check size={13} /> Create Asset</>}
               </button>
             </div>
           </div>

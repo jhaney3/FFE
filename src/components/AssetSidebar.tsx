@@ -23,37 +23,39 @@ function AssetCard({ asset, onDelete, tagMeta }: { asset: any; onDelete: (id: st
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      className={`group relative bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden cursor-grab active:cursor-grabbing transition-all ${
-        isDragging ? 'opacity-40 ring-2 ring-indigo-400' : 'hover:border-indigo-300 dark:hover:border-indigo-700 hover:shadow-md'
+      className={`group relative border overflow-hidden cursor-grab active:cursor-grabbing transition-all ${
+        isDragging
+          ? 'opacity-40 border-blue-500'
+          : 'border-gray-800 bg-gray-950/50 hover:border-gray-700'
       }`}
     >
-      <div className="w-full aspect-square bg-gray-200 dark:bg-gray-800">
+      <div className="w-full aspect-square bg-gray-900 border-b border-gray-800">
         {asset.photo_url ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={asset.photo_url} alt={asset.name} className="w-full h-full object-cover pointer-events-none" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-400">
-            <Package size={24} />
+          <div className="w-full h-full flex items-center justify-center text-gray-700">
+            <Package size={20} />
           </div>
         )}
       </div>
 
       <div className="p-2">
-        <p className="text-[12px] font-semibold text-gray-800 dark:text-gray-100 truncate leading-tight">{asset.name}</p>
+        <p className="text-[11px] font-semibold text-gray-200 truncate leading-tight">{asset.name}</p>
         {sortedAttrs.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-1">
+          <div className="flex flex-wrap gap-1 mt-1.5">
             {sortedAttrs.slice(0, 2).map((attr: string) => {
               const isParent = tagMeta.get(`${asset.item_type_id}:${attr}`) ?? false;
               return (
-                <span key={attr} className={`text-[10px] px-1.5 py-0.5 rounded leading-none font-medium ${
+                <span key={attr} className={`font-mono text-[9px] px-1 py-px border leading-none ${
                   isParent
-                    ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-                    : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300'
+                    ? 'border-amber-700/50 bg-amber-900/20 text-amber-400'
+                    : 'border-blue-800/50 bg-blue-900/15 text-blue-400'
                 }`}>{attr}</span>
               );
             })}
             {sortedAttrs.length > 2 && (
-              <span className="text-[10px] text-gray-400">+{sortedAttrs.length - 2}</span>
+              <span className="font-mono text-[9px] text-gray-600">+{sortedAttrs.length - 2}</span>
             )}
           </div>
         )}
@@ -62,10 +64,10 @@ function AssetCard({ asset, onDelete, tagMeta }: { asset: any; onDelete: (id: st
       <button
         onPointerDown={(e) => e.stopPropagation()}
         onClick={(e) => { e.stopPropagation(); onDelete(asset.id); }}
-        className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+        className="absolute top-1.5 right-1.5 p-1 border border-transparent bg-black/50 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity hover:border-red-700 hover:text-red-400 hover:bg-red-900/20"
         title="Delete asset"
       >
-        <Trash2 size={11} />
+        <Trash2 size={10} />
       </button>
     </div>
   );
@@ -147,42 +149,47 @@ export default function AssetSidebar({ onClose }: { onClose: () => void }) {
     : assets;
 
   return (
-    <div className="fixed right-0 top-14 bottom-0 w-64 bg-white dark:bg-gray-950 border-l border-gray-200 dark:border-gray-800 shadow-2xl z-30 flex flex-col animate-in slide-in-from-right duration-200">
-      <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between shrink-0">
-        <h2 className="text-sm font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
-          <Package size={15} className="text-indigo-500" /> Assets
-        </h2>
-        <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors">
-          <X size={16} />
+    <div className="fixed right-0 top-14 bottom-0 w-60 bg-gray-900 border-l border-gray-800 surface-raised z-30 flex flex-col animate-in slide-in-from-right duration-200">
+      {/* Header */}
+      <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between shrink-0">
+        <span className="font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500 flex items-center gap-1.5">
+          <Package size={11} className="text-blue-500" />
+          Asset Library
+        </span>
+        <button
+          onClick={onClose}
+          className="p-1 border border-transparent hover:border-gray-700 text-gray-600 hover:text-gray-300 transition-colors"
+        >
+          <X size={14} />
         </button>
       </div>
 
-      <div className="px-3 py-2 shrink-0">
+      {/* Search */}
+      <div className="px-3 py-2.5 border-b border-gray-800 shrink-0">
         <div className="relative">
-          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+          <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" />
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search assets..."
-            className="w-full pl-7 pr-3 py-1.5 text-sm bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-lg outline-none focus:border-indigo-400 transition-colors"
+            className="w-full pl-7 pr-3 py-1.5 font-mono text-[11px] bg-gray-950 border border-gray-700 focus:border-blue-500 outline-none transition-colors text-gray-100 placeholder:text-gray-700"
           />
         </div>
       </div>
 
-      <p className="px-3 pb-2 text-[10px] text-gray-400 shrink-0">Drag onto a room zone to add an item.</p>
+      <p className="px-3 py-1.5 font-mono text-[9px] tracking-wider text-gray-700 uppercase shrink-0">Drag onto a zone to assign</p>
 
+      {/* Grid */}
       <div className="flex-1 overflow-y-auto px-3 pb-3 custom-scrollbar">
         {filtered.length === 0 ? (
-          <div className="text-center py-10 text-gray-400">
-            <Package size={28} className="mx-auto mb-2 opacity-40" />
-            <p className="text-xs leading-relaxed">
-              {assets.length === 0
-                ? 'No assets yet.\nUse "Save as asset" when logging an item.'
-                : 'No matches.'}
+          <div className="flex flex-col items-center justify-center py-10 gap-2">
+            <Package size={22} className="text-gray-800" />
+            <p className="font-mono text-[10px] text-gray-700 text-center leading-relaxed tracking-wider uppercase">
+              {assets.length === 0 ? 'No assets yet' : 'No matches'}
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             {filtered.map(asset => (
               <AssetCard key={asset.id} asset={asset} onDelete={handleDelete} tagMeta={tagMeta} />
             ))}

@@ -14,7 +14,7 @@ function DraggableThumbnail({ photo, onDelete }: { photo: any, onDelete: (id: st
 
   const style = {
     zIndex: isDragging ? 50 : 'auto',
-    opacity: isDragging ? 0.3 : 1,
+    opacity: isDragging ? 0.25 : 1,
   };
 
   return (
@@ -23,25 +23,30 @@ function DraggableThumbnail({ photo, onDelete }: { photo: any, onDelete: (id: st
       style={style}
       {...listeners}
       {...attributes}
-      className={`relative group rounded-md overflow-hidden bg-gray-100 shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-grab active:cursor-grabbing ${isDragging ? 'shadow-xl ring-2 ring-blue-500' : ''}`}
+      className={`relative group overflow-hidden border transition-colors cursor-grab active:cursor-grabbing aspect-square ${
+        isDragging
+          ? 'border-blue-500'
+          : 'border-gray-800 hover:border-gray-600'
+      }`}
     >
-      <img 
-        src={photo.photo_url} 
-        alt="Incoming Triage item" 
-        className="w-full h-32 object-cover pointer-events-none transition-all" 
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={photo.photo_url}
+        alt="Incoming Triage item"
+        className="w-full h-full object-cover pointer-events-none"
       />
-      
-      {/* Delete Overlay */}
+
+      {/* Hover delete */}
       <button
         type="button"
         onPointerDown={(e) => {
-          e.stopPropagation(); // Stop drag kit from stealing the click
+          e.stopPropagation();
           onDelete(photo.id);
         }}
-        className="absolute top-2 right-2 bg-red-500/90 hover:bg-red-600 text-white p-1.5 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity z-10 flex items-center justify-center cursor-pointer"
+        className="absolute top-1 right-1 bg-gray-950/90 hover:bg-red-500/80 text-gray-500 hover:text-white p-1 opacity-0 group-hover:opacity-100 transition-all z-10 flex items-center justify-center cursor-pointer border border-gray-700 hover:border-red-400"
         title="Discard Photo"
       >
-        <Trash2 size={14} />
+        <Trash2 size={11} />
       </button>
     </div>
   );
@@ -121,44 +126,54 @@ export default function Sidebar() {
 
   return (
     <div className="h-full shrink-0 relative z-10">
-      {/* Collapsing content panel — width drives the flex layout size */}
+      {/* Collapsing content panel */}
       <div
-        style={{ width: isOpen ? 320 : 0, transition: 'width 0.25s ease-in-out' }}
+        style={{ width: isOpen ? 288 : 0, transition: 'width 0.22s ease-in-out' }}
         className="h-full overflow-hidden"
       >
-        <div className="w-80 h-full bg-white dark:bg-gray-950 border-r border-gray-200 dark:border-gray-800 flex flex-col shadow-lg">
-          <div className="p-4 border-b border-gray-200 dark:border-gray-800">
-            <h2 className="text-xl font-bold text-gray-800 dark:text-gray-100 tracking-tight">Incoming Triage</h2>
-            <p className="text-sm text-gray-500 mt-1">Drag and drop unassigned photos to specific rooms on the floor plan.</p>
+        <div className="w-72 h-full bg-gray-950 border-r border-gray-800 flex flex-col surface-raised">
+
+          {/* Header */}
+          <div className="px-4 py-3 border-b border-gray-800 flex items-center justify-between shrink-0">
+            <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-gray-500">Triage Queue</p>
+            {photos.length > 0 && (
+              <span className="font-mono text-[10px] text-blue-400 bg-blue-900/20 border border-blue-700/40 px-1.5 py-0.5 tabular-nums">
+                {photos.length}
+              </span>
+            )}
           </div>
 
           <PhotoUploader />
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900/20 custom-scrollbar min-h-0">
-            {photos.map((photo) => (
-              <DraggableThumbnail key={photo.id} photo={photo} onDelete={deletePhoto} />
-            ))}
-            {photos.length === 0 && (
-              <div className="flex flex-col items-center justify-center text-gray-400 text-sm h-32 space-y-2">
-                <span className="text-2xl">📸</span>
-                <p>Queue is empty.</p>
+          {/* 2-column photo grid */}
+          <div className="flex-1 overflow-y-auto p-3 custom-scrollbar min-h-0">
+            {photos.length > 0 ? (
+              <div className="grid grid-cols-2 gap-2">
+                {photos.map((photo) => (
+                  <DraggableThumbnail key={photo.id} photo={photo} onDelete={deletePhoto} />
+                ))}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-32 gap-2">
+                <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-gray-700">No items</span>
+                <p className="text-xs text-gray-700">Scan the QR code to upload photos.</p>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Toggle tab — absolutely positioned, tracks sidebar width via `left` */}
+      {/* Toggle tab */}
       <button
         onClick={() => setIsOpen(o => !o)}
         title={isOpen ? 'Hide triage panel' : 'Show triage panel'}
-        style={{ left: isOpen ? 320 : 0, transition: 'left 0.25s ease-in-out' }}
-        className="absolute top-1/2 -translate-y-1/2 w-5 h-14 bg-white dark:bg-gray-900 border border-l-0 border-gray-200 dark:border-gray-700 rounded-r-lg flex items-center justify-center shadow-md hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        style={{ left: isOpen ? 288 : 0, transition: 'left 0.22s ease-in-out' }}
+        className="absolute top-1/2 -translate-y-1/2 w-4 h-10 bg-gray-900 border border-l-0 border-gray-800 flex items-center justify-center hover:bg-gray-800 transition-colors"
       >
         <ChevronLeft
-          size={14}
-          className="text-gray-400"
-          style={{ transition: 'transform 0.25s ease-in-out', transform: isOpen ? 'rotate(0deg)' : 'rotate(180deg)' }}
+          size={12}
+          className="text-gray-600"
+          style={{ transition: 'transform 0.22s ease-in-out', transform: isOpen ? 'rotate(0deg)' : 'rotate(180deg)' }}
         />
       </button>
     </div>

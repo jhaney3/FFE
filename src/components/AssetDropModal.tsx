@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Package, Check, SplitSquareVertical, Info } from 'lucide-react';
+import { X, Package, Check, SplitSquareVertical, Info, ChevronDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
 export default function AssetDropModal({ asset, room, onClose, onSaved }: {
@@ -13,6 +13,7 @@ export default function AssetDropModal({ asset, room, onClose, onSaved }: {
   const qtyInputRef = useRef<HTMLInputElement>(null);
   const [qty, setQty] = useState(1);
   const [quality, setQuality] = useState('Good');
+  const [isConditionOpen, setIsConditionOpen] = useState(false);
   const [isSplit, setIsSplit] = useState(false);
   const [splitQty, setSplitQty] = useState({ Excellent: 0, Good: 1, Fair: 0, Poor: 0 });
   const [notes, setNotes] = useState('');
@@ -102,33 +103,36 @@ export default function AssetDropModal({ asset, room, onClose, onSaved }: {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-md border border-gray-200 dark:border-gray-800 overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+    <div className="fixed inset-0 bg-black/75 z-[10000] flex items-center justify-center p-4">
+      <div className="bg-gray-900 w-full max-w-md border border-gray-700 surface-raised overflow-hidden">
+
+        <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
           <div>
-            <p className="text-xs text-gray-500 mb-0.5">Adding to <span className="font-semibold text-gray-700 dark:text-gray-300">{room.name}</span></p>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">{asset.name}</h2>
+            <p className="font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500 mb-0.5">
+              Adding to <span className="text-gray-400">{room.name}</span>
+            </p>
+            <h2 className="text-base font-semibold text-gray-100">{asset.name}</h2>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 transition-colors">
-            <X size={18} />
+          <button onClick={onClose} className="p-1.5 text-gray-600 hover:text-gray-200 hover:bg-gray-800 border border-transparent hover:border-gray-700 transition-colors">
+            <X size={16} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           {/* Asset preview */}
-          <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-950 rounded-xl border border-gray-100 dark:border-gray-800">
+          <div className="flex items-center gap-3 p-3 border border-gray-800 bg-gray-950">
             {asset.photo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={asset.photo_url} alt={asset.name} className="w-14 h-14 rounded-lg object-cover shrink-0" />
+              <img src={asset.photo_url} alt={asset.name} className="w-14 h-14 object-cover shrink-0" />
             ) : (
-              <div className="w-14 h-14 rounded-lg bg-gray-200 dark:bg-gray-800 flex items-center justify-center shrink-0">
-                <Package size={20} className="text-gray-400" />
+              <div className="w-14 h-14 bg-gray-800 border border-gray-700 flex items-center justify-center shrink-0">
+                <Package size={20} className="text-gray-600" />
               </div>
             )}
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{asset.name}</p>
+              <p className="text-sm font-medium text-gray-200 truncate">{asset.name}</p>
               {asset.attributes?.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-1">
+                <div className="flex flex-wrap gap-1 mt-1.5">
                   {[...asset.attributes].sort((a: string, b: string) => {
                     const aP = tagMeta.get(`${asset.item_type_id}:${a}`) ?? false;
                     const bP = tagMeta.get(`${asset.item_type_id}:${b}`) ?? false;
@@ -137,10 +141,10 @@ export default function AssetDropModal({ asset, room, onClose, onSaved }: {
                   }).map((a: string) => {
                     const isParent = tagMeta.get(`${asset.item_type_id}:${a}`) ?? false;
                     return (
-                      <span key={a} className={`text-[10px] px-1.5 py-0.5 rounded leading-none font-medium ${
+                      <span key={a} className={`font-mono text-[10px] px-1.5 py-0.5 border ${
                         isParent
-                          ? 'bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400'
-                          : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300'
+                          ? 'border-amber-700 bg-amber-700/10 text-amber-400'
+                          : 'border-blue-800 bg-blue-900/10 text-blue-400'
                       }`}>{a}</span>
                     );
                   })}
@@ -149,80 +153,99 @@ export default function AssetDropModal({ asset, room, onClose, onSaved }: {
             </div>
           </div>
 
-          {/* Quantity + Quality row */}
-          <div className="bg-gray-50 dark:bg-gray-900/50 p-3 rounded-xl border border-gray-100 dark:border-gray-800">
+          {/* Quantity + Quality */}
+          <div className="border border-gray-800 bg-gray-950/50 p-4">
             <div className="flex items-end gap-3">
               <div className="w-1/3">
-                <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Quantity</label>
+                <label className="block font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500 mb-1.5">Quantity</label>
                 <input
                   ref={qtyInputRef}
                   type="number" min="1"
                   value={qty || ''}
                   onChange={(e) => setQty(parseInt(e.target.value) || 0)}
                   onBlur={() => { if (!qty || qty < 1) setQty(1); }}
-                  className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 rounded-lg outline-none focus:border-indigo-400 font-bold text-center"
+                  className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2.5 outline-none transition-colors text-gray-100 text-sm"
                 />
               </div>
               {!isSplit && (
                 <div className="flex-1">
-                  <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Quality</label>
-                  <select
-                    value={quality} onChange={(e) => setQuality(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-950 rounded-lg outline-none focus:border-indigo-400 appearance-none text-sm"
-                  >
-                    <option>Excellent</option>
-                    <option>Good</option>
-                    <option>Fair</option>
-                    <option>Poor</option>
-                  </select>
+                  <label className="block font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500 mb-1.5">Condition</label>
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsConditionOpen(v => !v)}
+                      onBlur={() => setTimeout(() => setIsConditionOpen(false), 150)}
+                      className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2.5 pr-8 outline-none transition-colors text-gray-100 text-sm text-left cursor-pointer"
+                    >
+                      {quality}
+                    </button>
+                    <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" size={14} />
+                    {isConditionOpen && (
+                      <div className="absolute z-20 w-full bg-gray-900 border border-gray-700 border-t-0 top-full">
+                        {(['Excellent', 'Good', 'Fair', 'Poor'] as const).map(q => (
+                          <button
+                            key={q}
+                            type="button"
+                            onMouseDown={() => { setQuality(q); setIsConditionOpen(false); }}
+                            className="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-300 text-sm transition-colors border-b border-gray-800 last:border-0"
+                          >
+                            {q}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
-              <button
-                type="button"
-                onClick={handleToggleSplit}
-                className={`shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold border transition-all ${
-                  isSplit
-                    ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-700'
-                    : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300'
-                }`}
-              >
-                <SplitSquareVertical size={13} />
-                {isSplit ? 'Splitting' : 'Split'}
-              </button>
+              <div className="shrink-0 flex flex-col">
+                <span className="block font-mono text-[10px] mb-1.5 invisible">_</span>
+                <button
+                  type="button"
+                  onClick={handleToggleSplit}
+                  className={`flex items-center justify-center gap-1.5 px-3 py-2.5 leading-5 font-mono text-[10px] tracking-wider uppercase border transition-colors ${
+                    isSplit
+                      ? 'border-blue-600 bg-blue-600/10 text-blue-400'
+                      : 'border-gray-700 text-gray-500 hover:border-gray-500 hover:text-gray-300'
+                  }`}
+                >
+                  <SplitSquareVertical size={12} />
+                  {isSplit ? 'Splitting' : 'Split'}
+                </button>
+              </div>
             </div>
 
             {isSplit && (
-              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-gray-500">Allocate all {qty} items by condition:</span>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+              <div className="mt-4 pt-4 border-t border-gray-800">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="font-mono text-[10px] text-gray-600 uppercase tracking-wider">Allocate {qty} by condition</span>
+                  <span className={`font-mono text-[10px] px-2 py-0.5 border ${
                     currentSplitTotal === qty
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400'
-                      : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400'
+                      ? 'border-green-800 text-green-500 bg-green-900/10'
+                      : 'border-red-800 text-red-500 bg-red-900/10'
                   }`}>
-                    {currentSplitTotal} / {qty}
+                    {currentSplitTotal}/{qty}
                   </span>
                 </div>
                 <div className="grid grid-cols-4 gap-2">
                   {(['Excellent', 'Good', 'Fair', 'Poor'] as const).map((q) => (
-                    <div key={q} className="bg-white dark:bg-gray-950 p-2 rounded-lg border border-gray-200 dark:border-gray-800 flex flex-col items-center">
-                      <label className={`text-[9px] uppercase tracking-wider font-bold mb-1 ${
-                        q === 'Excellent' ? 'text-green-600 dark:text-green-400' :
-                        q === 'Good' ? 'text-blue-600 dark:text-blue-400' :
-                        q === 'Fair' ? 'text-yellow-600 dark:text-yellow-500' : 'text-red-600 dark:text-red-400'
-                      }`}>{q}</label>
+                    <div key={q} className="border border-gray-800 bg-gray-900 p-2 flex flex-col items-center gap-1">
+                      <label className={`font-mono text-[9px] uppercase tracking-wider ${
+                        q === 'Excellent' ? 'text-green-500' :
+                        q === 'Good' ? 'text-blue-400' :
+                        q === 'Fair' ? 'text-yellow-500' : 'text-red-500'
+                      }`}>{q[0]}</label>
                       <input
                         type="number" min="0"
                         value={splitQty[q]}
                         onChange={(e) => handleSplitChange(q, parseInt(e.target.value) || 0)}
-                        className="w-full text-center text-base font-semibold bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded outline-none focus:border-indigo-400 py-0.5"
+                        className="w-full text-center text-base font-bold border border-gray-700 bg-gray-950 focus:border-blue-500 outline-none text-gray-100 py-1"
                       />
                     </div>
                   ))}
                 </div>
                 {currentSplitTotal !== qty && (
-                  <p className="text-[11px] text-red-500 mt-2 flex items-center gap-1 font-medium bg-red-50 dark:bg-red-900/10 p-1.5 rounded-md border border-red-100 dark:border-red-900/30">
-                    <Info size={11} /> Quantities must sum to {qty}.
+                  <p className="font-mono text-[10px] text-red-500 mt-2 flex items-center gap-1 border border-red-900 bg-red-900/10 px-2 py-1.5">
+                    <Info size={10} /> Quantities must sum to {qty}
                   </p>
                 )}
               </div>
@@ -230,24 +253,24 @@ export default function AssetDropModal({ asset, room, onClose, onSaved }: {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Notes</label>
+            <label className="block font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500 mb-1.5">Notes</label>
             <textarea
               value={notes} onChange={(e) => setNotes(e.target.value)}
               placeholder="Optional observations..."
               rows={2}
-              className="w-full px-3 py-2 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-950 rounded-lg outline-none focus:border-indigo-400 resize-none text-sm"
+              className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2 outline-none resize-none text-gray-100 text-sm placeholder:text-gray-700"
             />
           </div>
 
           <div className="flex gap-2 pt-1">
-            <button type="button" onClick={onClose} className="flex-1 py-2.5 text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl transition-colors">
+            <button type="button" onClick={onClose} className="flex-1 py-2 font-mono text-[11px] tracking-wider uppercase border border-gray-700 text-gray-400 hover:text-gray-200 hover:bg-gray-800 transition-colors">
               Cancel
             </button>
             <button
               type="submit" disabled={loading || (isSplit && currentSplitTotal !== qty)}
-              className="flex-1 py-2.5 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 rounded-xl shadow-lg shadow-indigo-500/30 flex items-center justify-center gap-1.5 transition-all"
+              className="flex-1 py-2 font-mono text-[11px] tracking-wider uppercase border border-blue-600 bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5"
             >
-              {loading ? 'Adding...' : <><Check size={15} /> Add to Room</>}
+              {loading ? 'Adding...' : <><Check size={13} /> Add to Room</>}
             </button>
           </div>
         </form>

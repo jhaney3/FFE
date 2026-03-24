@@ -381,11 +381,11 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
       }}
       className={`absolute group transition-all ${
         isOver
-          ? 'bg-blue-500/50 border-2 border-blue-400 ring-4 ring-blue-300/50 shadow-lg z-20 scale-[1.02]'
+          ? 'bg-blue-500/40 border-2 border-blue-400 z-20'
           : activeAdmin
-            ? 'bg-indigo-500/20 border border-indigo-500/60 hover:bg-indigo-500/35 z-10 hover:z-20 cursor-move'
-            : 'hover:bg-blue-500/10 border border-transparent hover:border-blue-300/50 z-10 cursor-pointer'
-      } ${isOpen && !activeAdmin ? '!z-[100] !border-blue-400/50 bg-blue-500/10 ring-2 ring-blue-400/20' : ''} ${
+            ? 'bg-blue-500/10 border border-blue-600/40 hover:bg-blue-500/20 z-10 hover:z-20 cursor-move'
+            : 'hover:bg-blue-500/8 border border-transparent hover:border-blue-400/30 z-10 cursor-pointer'
+      } ${isOpen && !activeAdmin ? '!z-[100] !border-blue-400/40 bg-blue-500/8' : ''} ${
         spotlightDim ? 'opacity-30 grayscale' : ''
       }`}
       style={{
@@ -414,21 +414,21 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
           {/* Animated pill */}
           <div
             style={{
-              width:           active ? expandedWidth : 12,
-              height:          active ? 22 : 12,
+              width:           active ? expandedWidth : 10,
+              height:          active ? 20 : 10,
               backgroundColor: dotColor,
-              borderRadius:    9999,
+              borderRadius:    2,
               overflow:        'hidden',
               display:         'flex',
               alignItems:      'center',
               justifyContent:  'center',
               flexShrink:      0,
               whiteSpace:      'nowrap',
-              boxShadow:       '0 1px 4px rgba(0,0,0,0.35), 0 0 0 2px rgba(255,255,255,0.55)',
-              transition:      'width 0.25s cubic-bezier(0.4,0,0.2,1), height 0.2s cubic-bezier(0.4,0,0.2,1)',
+              boxShadow:       '0 1px 3px rgba(0,0,0,0.5)',
+              transition:      'width 0.2s cubic-bezier(0.4,0,0.2,1), height 0.18s cubic-bezier(0.4,0,0.2,1)',
             }}
           >
-            <span style={{ color: 'white', fontSize: 11, fontWeight: 700, lineHeight: 1, userSelect: 'none', opacity: active ? 1 : 0, transition: active ? 'opacity 0.15s ease-out 0.1s' : 'opacity 0.08s ease-out' }}>
+            <span style={{ color: 'white', fontSize: 10, fontWeight: 600, lineHeight: 1, letterSpacing: '0.04em', userSelect: 'none', opacity: active ? 1 : 0, transition: active ? 'opacity 0.12s ease-out 0.08s' : 'opacity 0.06s ease-out' }}>
               {room.name}
             </span>
           </div>
@@ -437,14 +437,14 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
 
       {/* ── Zone name label in admin mode ── */}
       {activeAdmin && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 px-2 py-0.5 rounded text-[10px] font-bold text-indigo-200 bg-indigo-900/50 whitespace-nowrap max-w-[90%] truncate">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none z-10 px-2 py-0.5 font-mono text-[10px] font-semibold text-blue-300 bg-gray-900/80 whitespace-nowrap max-w-[90%] truncate border border-blue-800/50">
           {room.name}
         </div>
       )}
 
       {/* ── Spotlight count badge ── */}
       {spotlightMatch && (
-        <div className="absolute top-1 right-1 z-40 pointer-events-none bg-indigo-600 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-full shadow leading-none">
+        <div className="absolute top-1 right-1 z-40 pointer-events-none bg-blue-500 text-white font-mono text-[10px] font-bold px-1.5 py-0.5 leading-none">
           {spotlightCount}
         </div>
       )}
@@ -459,7 +459,7 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
           {onEditZone && (
             <button
               onClick={(e) => { e.stopPropagation(); onEditZone(room); }}
-              className="bg-indigo-500 hover:bg-indigo-600 text-white p-1.5 rounded-full shadow-lg flex items-center justify-center cursor-pointer"
+              className="bg-gray-900 border border-gray-700 hover:border-blue-500 hover:text-blue-400 text-gray-400 p-1.5 flex items-center justify-center cursor-pointer transition-colors"
               title="Edit Zone"
             >
               <Pencil size={12} />
@@ -468,7 +468,7 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
           {onDeleteZone && (
             <button
               onClick={(e) => { e.stopPropagation(); onDeleteZone(room.id); }}
-              className="bg-red-500 hover:bg-red-600 text-white p-1.5 rounded-full shadow-lg flex items-center justify-center cursor-pointer"
+              className="bg-gray-900 border border-gray-700 hover:border-red-500 hover:text-red-400 text-gray-400 p-1.5 flex items-center justify-center cursor-pointer transition-colors"
               title="Delete Zone"
             >
               <Trash2 size={12} />
@@ -483,11 +483,11 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
           {(['tl', 'tr', 'bl', 'br'] as Corner[]).map(corner => (
             <div
               key={corner}
-              className={`absolute w-3 h-3 bg-white border-2 border-indigo-500 z-30 touch-none ${
-                corner === 'tl' ? '-top-1.5 -left-1.5  cursor-nw-resize rounded-tl-sm' :
-                corner === 'tr' ? '-top-1.5 -right-1.5 cursor-ne-resize rounded-tr-sm' :
-                corner === 'bl' ? '-bottom-1.5 -left-1.5  cursor-sw-resize rounded-bl-sm' :
-                                  '-bottom-1.5 -right-1.5 cursor-se-resize rounded-br-sm'
+              className={`absolute w-2.5 h-2.5 bg-gray-900 border border-blue-500 z-30 touch-none ${
+                corner === 'tl' ? '-top-1.5 -left-1.5  cursor-nw-resize' :
+                corner === 'tr' ? '-top-1.5 -right-1.5 cursor-ne-resize' :
+                corner === 'bl' ? '-bottom-1.5 -left-1.5  cursor-sw-resize' :
+                                  '-bottom-1.5 -right-1.5 cursor-se-resize'
               }`}
               onPointerDown={(e) => handleCornerDown(e, corner)}
               onPointerMove={handleCornerMove}
@@ -512,61 +512,64 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
           `}</style>
 
           <svg style={{ position: 'fixed', inset: 0, width: '100vw', height: '100vh', pointerEvents: 'none', zIndex: 9998 }}>
-            <line ref={svgLineRef} stroke="#6366f1" strokeWidth="1.5" strokeDasharray="5 4" strokeLinecap="round" />
+            <line ref={svgLineRef} stroke="#0d7fff" strokeWidth="1" strokeDasharray="4 4" strokeLinecap="square" />
           </svg>
 
           <div
             ref={popoutRef}
             data-room-popout
             style={{ position: 'fixed', left: pos.current.left, top: pos.current.top, width: size.current.width, zIndex: 9999 }}
-            className="ffe-popout bg-black/85 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col select-none overflow-hidden"
+            className="ffe-popout bg-gray-900 border border-gray-700 surface-raised flex flex-col select-none overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Drag handle */}
             <div
-              className="w-full flex justify-center pt-3 pb-1 cursor-grab active:cursor-grabbing shrink-0 group/handle touch-none"
+              className="w-full flex justify-center pt-2.5 pb-1 cursor-grab active:cursor-grabbing shrink-0 group/handle touch-none"
               onPointerDown={handlePopoutDragDown}
               onPointerMove={handlePopoutDragMove}
               onPointerUp={handlePopoutDragUp}
               onPointerCancel={handlePopoutDragUp}
             >
-              <div className="w-12 h-1.5 bg-white/20 group-hover/handle:bg-white/40 rounded-full transition-colors" />
+              <div className="w-8 h-px bg-gray-700 group-hover/handle:bg-gray-500 transition-colors" />
             </div>
 
-            <div className="flex-1 flex flex-col overflow-hidden px-4 pb-4 gap-3 min-h-0">
-              <div className="flex items-start justify-between border-b border-white/10 pb-2 shrink-0">
+            <div className="flex-1 flex flex-col overflow-hidden px-4 pb-3 gap-2.5 min-h-0">
+              {/* Zone header */}
+              <div className="flex items-start justify-between border-b border-gray-800 pb-2.5 shrink-0">
                 <div className="flex-1 pr-2">
-                  <h3 className="text-white font-semibold text-sm flex items-center gap-1.5 break-words leading-tight">
-                    <span className="w-2.5 h-2.5 rounded-full shrink-0 border border-white/20" style={{ backgroundColor: dotColor }} />
+                  <h3 className="text-gray-100 font-semibold text-sm flex items-center gap-1.5 break-words leading-tight">
+                    <span className="w-2 h-2 shrink-0 border border-gray-700" style={{ backgroundColor: dotColor }} />
                     {room.name}
                   </h3>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-gray-400">
-                    {room.building_name && <span className="flex items-center gap-1"><Building2 size={12} />{room.building_name}</span>}
-                    {room.level_name    && <span className="flex items-center gap-1"><Layers    size={12} />{room.level_name}</span>}
+                  <div className="flex items-center gap-3 mt-1 font-mono text-[10px] text-gray-500">
+                    {room.building_name && <span className="flex items-center gap-1"><Building2 size={11} />{room.building_name}</span>}
+                    {room.level_name    && <span className="flex items-center gap-1"><Layers    size={11} />{room.level_name}</span>}
                   </div>
                 </div>
                 {room.room_type && (
-                  <span className="text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-sm shrink-0 ml-2" style={{ color: dotColor, backgroundColor: `${dotColor}22` }}>
+                  <span className="font-mono text-[9px] uppercase tracking-[0.12em] px-2 py-0.5 border shrink-0 ml-2" style={{ color: dotColor, borderColor: `${dotColor}44`, backgroundColor: `${dotColor}11` }}>
                     {room.room_type}
                   </span>
                 )}
               </div>
 
-              <div className="flex-1 space-y-2 overflow-y-auto pr-1 min-h-0 custom-scrollbar">
+              {/* Item list */}
+              <div className="flex-1 space-y-1.5 overflow-y-auto pr-1 min-h-0 custom-scrollbar">
                 {items.length > 0 ? items.map(item => (
-                  <div key={item.id} className="group/item flex items-center gap-2.5 p-2 rounded-lg bg-white/5 border border-white/5 relative">
+                  <div key={item.id} className="group/item flex items-center gap-2.5 p-2 border border-gray-800 bg-gray-950/50 relative">
                     {item.photo_url ? (
-                      <img src={item.photo_url} alt={item.ItemTypes?.name || 'Item'} className="w-10 h-10 rounded-md object-cover bg-gray-800 shrink-0" />
+                      <img src={item.photo_url} alt={item.ItemTypes?.name || 'Item'} className="w-9 h-9 object-cover bg-gray-800 shrink-0" />
                     ) : (
-                      <div className="w-10 h-10 rounded-md bg-gray-800 flex items-center justify-center text-gray-500 shrink-0"><Package size={16} /></div>
+                      <div className="w-9 h-9 bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-600 shrink-0"><Package size={14} /></div>
                     )}
-                    <div className="flex-1 min-w-0 pr-12">
-                      <p className="text-[13px] font-semibold text-gray-100 truncate leading-tight">{item.ItemTypes?.name}</p>
-                      <div className="flex items-center gap-2 mt-1 overflow-hidden">
-                        {item.qty_excellent > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-green-400" /><span className="text-[11px] font-bold text-green-400">{item.qty_excellent}</span><span className="text-[10px] text-green-400/60">Exc</span></span>}
-                        {item.qty_good      > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-blue-400"  /><span className="text-[11px] font-bold text-blue-400" >{item.qty_good}     </span><span className="text-[10px] text-blue-400/60" >Good</span></span>}
-                        {item.qty_fair      > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-yellow-400"/><span className="text-[11px] font-bold text-yellow-400">{item.qty_fair}     </span><span className="text-[10px] text-yellow-400/60">Fair</span></span>}
-                        {item.qty_poor      > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1.5 h-1.5 rounded-full bg-red-400"   /><span className="text-[11px] font-bold text-red-400"  >{item.qty_poor}     </span><span className="text-[10px] text-red-400/60"  >Poor</span></span>}
-                        {item.attributes?.length > 0 && <span className="ffe-attr w-px h-3 bg-white/15 shrink-0 mx-0.5" />}
+                    <div className="flex-1 min-w-0 pr-10">
+                      <p className="text-[12px] font-semibold text-gray-100 truncate leading-tight">{item.ItemTypes?.name}</p>
+                      <div className="flex items-center gap-1.5 mt-1 overflow-hidden">
+                        {item.qty_excellent > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1 h-1 bg-green-400" /><span className="font-mono text-[10px] font-bold text-green-400">{item.qty_excellent}</span><span className="font-mono text-[9px] text-green-400/60">E</span></span>}
+                        {item.qty_good      > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1 h-1 bg-blue-400"  /><span className="font-mono text-[10px] font-bold text-blue-400" >{item.qty_good}     </span><span className="font-mono text-[9px] text-blue-400/60" >G</span></span>}
+                        {item.qty_fair      > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1 h-1 bg-yellow-400"/><span className="font-mono text-[10px] font-bold text-yellow-400">{item.qty_fair}     </span><span className="font-mono text-[9px] text-yellow-400/60">F</span></span>}
+                        {item.qty_poor      > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1 h-1 bg-red-400"   /><span className="font-mono text-[10px] font-bold text-red-400"  >{item.qty_poor}     </span><span className="font-mono text-[9px] text-red-400/60"  >P</span></span>}
+                        {item.attributes?.length > 0 && <span className="ffe-attr w-px h-3 bg-gray-700 shrink-0 mx-0.5" />}
                         {[...(item.attributes ?? [])].sort((a: string, b: string) => {
                           const aP = tagMeta?.get(`${item.item_type_id}:${a}`) ?? false;
                           const bP = tagMeta?.get(`${item.item_type_id}:${b}`) ?? false;
@@ -575,30 +578,31 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
                         }).map((tag: string) => {
                           const isParent = tagMeta?.get(`${item.item_type_id}:${tag}`) ?? false;
                           return (
-                            <span key={tag} className={`ffe-attr text-[10px] px-1.5 py-0.5 rounded shrink-0 leading-none ${
+                            <span key={tag} className={`ffe-attr font-mono text-[9px] px-1 py-px border shrink-0 leading-none ${
                               isParent
-                                ? 'bg-amber-500/20 text-amber-300/90 font-semibold'
-                                : 'bg-indigo-500/15 text-indigo-300/90'
+                                ? 'border-amber-700/50 bg-amber-900/20 text-amber-400'
+                                : 'border-blue-800/50 bg-blue-900/15 text-blue-400'
                             }`}>{tag}</span>
                           );
                         })}
                       </div>
-                      {item.notes && <p className="ffe-notes text-[10px] text-gray-500 mt-0.5 truncate italic leading-tight">{item.notes}</p>}
+                      {item.notes && <p className="ffe-notes font-mono text-[9px] text-gray-600 mt-0.5 truncate leading-tight">{item.notes}</p>}
                     </div>
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                      <button onClick={() => setEditingItem(item)} className="p-1.5 rounded-md text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 transition-colors" title="Edit item"><Pencil size={13} /></button>
-                      <button onClick={() => handleDeleteItem(item.id, item.photo_url)} className="p-1.5 rounded-md text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors" title="Remove from room"><Trash2 size={13} /></button>
+                    <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
+                      <button onClick={() => setEditingItem(item)} className="p-1 text-gray-600 hover:text-blue-400 hover:bg-blue-500/10 transition-colors border border-transparent hover:border-blue-800" title="Edit item"><Pencil size={11} /></button>
+                      <button onClick={() => handleDeleteItem(item.id, item.photo_url)} className="p-1 text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors border border-transparent hover:border-red-800" title="Remove from room"><Trash2 size={11} /></button>
                     </div>
                   </div>
                 )) : (
-                  <div className="text-center py-4 text-xs text-gray-500 flex flex-col items-center gap-1">
-                    <Package size={20} className="opacity-50" />
-                    <p>No items assigned yet</p>
+                  <div className="text-center py-6 flex flex-col items-center gap-1.5">
+                    <Package size={18} className="text-gray-700" />
+                    <p className="font-mono text-[10px] text-gray-600 tracking-wider uppercase">No items assigned</p>
                   </div>
                 )}
               </div>
             </div>
 
+            {/* Resize handle */}
             <div
               className="absolute bottom-0 right-0 w-5 h-5 cursor-se-resize touch-none group/resize"
               onPointerDown={handlePopoutResizeDown}
@@ -606,8 +610,8 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
               onPointerUp={handlePopoutResizeUp}
               onPointerCancel={handlePopoutResizeUp}
             >
-              <svg width="10" height="10" viewBox="0 0 10 10" className="absolute bottom-1.5 right-1.5 text-white/20 group-hover/resize:text-white/50 transition-colors">
-                <path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              <svg width="8" height="8" viewBox="0 0 8 8" className="absolute bottom-1.5 right-1.5 text-gray-700 group-hover/resize:text-gray-500 transition-colors">
+                <path d="M7 1L1 7M7 4L4 7" stroke="currentColor" strokeWidth="1" strokeLinecap="square"/>
               </svg>
             </div>
           </div>

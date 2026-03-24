@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabase';
 import { saveAssetIfNew } from '@/lib/saveAsset';
-import { X, Check, Tag, ChevronDown, SplitSquareVertical, Info, Package, Bookmark } from 'lucide-react';
+import { X, Check, Tag, ChevronDown, SplitSquareVertical, Info, Package } from 'lucide-react';
 
 export default function EditItemModal({ item, onClose, onSaved }: {
   item: any;
@@ -37,6 +37,7 @@ export default function EditItemModal({ item, onClose, onSaved }: {
   const [isSplit, setIsSplit] = useState(false);
   const [totalQuantity, setTotalQuantity] = useState(1);
   const [globalQuality, setGlobalQuality] = useState('Good');
+  const [isConditionOpen, setIsConditionOpen] = useState(false);
   const [splitQty, setSplitQty] = useState({ Excellent: 0, Good: 1, Fair: 0, Poor: 0 });
 
   const [notes, setNotes] = useState(item.notes || '');
@@ -109,7 +110,7 @@ export default function EditItemModal({ item, onClose, onSaved }: {
       const match = assets?.find(a =>
         JSON.stringify([...(a.attributes || [])].sort()) === JSON.stringify(sorted)
       );
-      if (match) {
+      if (match && match.photo_url !== item.photo_url) {
         setPendingTypeId(existingType.id);
         setMatchedAsset(match);
       }
@@ -321,56 +322,55 @@ export default function EditItemModal({ item, onClose, onSaved }: {
   );
 
   return createPortal(
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[10000] flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col md:flex-row border border-gray-200 dark:border-gray-800 my-8 shadow-black/50">
+    <div className="fixed inset-0 bg-black/60 z-[10000] flex items-center justify-center p-4 overflow-y-auto">
+      <div className="bg-gray-900 w-full max-w-4xl overflow-hidden flex flex-col md:flex-row border border-gray-700 my-8 surface-raised">
 
-        {/* Left Side: Photo preview */}
-        <div className="w-full md:w-[45%] bg-gray-50 dark:bg-gray-950/80 p-8 flex flex-col justify-center border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-800 relative overflow-hidden group">
-          <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-indigo-500 to-purple-500" />
+        {/* Left Panel */}
+        <div className="w-full md:w-[45%] bg-gray-950 flex flex-col justify-center border-b md:border-b-0 md:border-r border-gray-800 relative overflow-hidden">
 
-          <div className="mb-6 mt-4">
-            <h3 className="text-xs font-bold text-gray-500 mb-1 uppercase tracking-wider">Editing Item</h3>
-            <p className="text-2xl font-black bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent inline-block drop-shadow-sm">
-              {item.ItemTypes?.name || 'Unknown Type'}
-            </p>
+          <div className="px-7 pt-8 pb-5">
+            <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-gray-500 mb-1">Editing Item</p>
+            <p className="text-xl font-semibold text-blue-400">{item.ItemTypes?.name || 'Unknown Type'}</p>
           </div>
 
-          <div className="relative rounded-xl overflow-hidden shadow-xl border border-white/20 dark:border-gray-700/50 group-hover:shadow-indigo-500/20 transition-all duration-300">
+          <div className="border-t border-gray-800 border-b overflow-hidden">
             {item.photo_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={item.photo_url}
-                className="w-full h-auto object-cover max-h-80 transform group-hover:scale-[1.02] transition-transform duration-500 ease-out"
+                className="w-full h-auto object-cover max-h-72"
                 alt="Item"
               />
             ) : (
-              <div className="w-full h-48 bg-gray-200 dark:bg-gray-800 flex items-center justify-center text-gray-400">
-                <Package size={48} />
+              <div className="w-full h-48 bg-gray-900 flex items-center justify-center">
+                <Package size={40} className="text-gray-700" />
               </div>
             )}
           </div>
         </div>
 
-        {/* Right Side: Form */}
-        <div className="w-full md:w-[55%] p-8 flex flex-col bg-white dark:bg-gray-900 h-full max-h-[85vh] overflow-y-auto custom-scrollbar relative">
-          <div className="flex justify-between items-start mb-6 sticky top-0 bg-white/90 dark:bg-gray-900/90 backdrop-blur-md pb-4 border-b border-gray-100 dark:border-gray-800 z-10 -mt-2 pt-2">
+        {/* Right Panel */}
+        <div className="w-full md:w-[55%] flex flex-col bg-gray-900 h-full max-h-[85vh] overflow-y-auto custom-scrollbar relative">
+
+          {/* Sticky Header */}
+          <div className="flex justify-between items-center sticky top-0 bg-gray-900 px-7 pt-6 pb-4 border-b border-gray-800 z-10 mb-5">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">Edit Item</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Update the details for this inventory item.</p>
+              <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-gray-500 mb-1">Edit Item</p>
+              <h2 className="text-lg font-semibold text-gray-100">Update Details</h2>
             </div>
             <button
               onClick={onClose}
-              className="p-2 -mr-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 bg-gray-100/50 hover:bg-gray-100 dark:bg-gray-800/50 dark:hover:bg-gray-800 rounded-full transition-colors"
+              className="p-1.5 text-gray-600 hover:text-gray-200 hover:bg-gray-800 border border-transparent hover:border-gray-700 transition-colors"
             >
-              <X size={20} />
+              <X size={18} />
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} className="flex-1 flex flex-col space-y-6">
+          <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} className="flex-1 flex flex-col space-y-5 px-7 pb-7">
 
             {/* Type Autocomplete */}
             <div className="relative">
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Item Type</label>
+              <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500 mb-1.5">Item Type</label>
               <div className="relative">
                 <input
                   ref={typeInputRef}
@@ -384,19 +384,19 @@ export default function EditItemModal({ item, onClose, onSaved }: {
                   onBlur={() => setTimeout(() => setIsTypeDropdownOpen(false), 150)}
                   placeholder="e.g. Chair, Desk, Monitor"
                   required
-                  className="w-full rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-950 bg-gray-50 shadow-sm focus:border-blue-500 focus:ring-blue-500/50 px-4 py-2.5 border outline-none transition-all pr-10"
+                  className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2.5 outline-none transition-colors text-gray-100 text-sm placeholder:text-gray-700 pr-8"
                 />
-                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" size={18} />
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" size={16} />
               </div>
 
               {isTypeDropdownOpen && (
-                <div className="absolute z-20 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-48 overflow-y-auto top-full mt-1">
+                <div className="absolute z-20 w-full bg-gray-900 border border-gray-700 border-t-0 max-h-48 overflow-y-auto top-full custom-scrollbar">
                   {filteredTypes.length > 0 ? (
                     filteredTypes.map(t => (
                       <button
                         key={t.id}
                         type="button"
-                        className="w-full text-left px-4 py-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 text-gray-700 dark:text-gray-200 text-sm transition-colors"
+                        className="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-300 text-sm transition-colors border-b border-gray-800 last:border-0"
                         onMouseDown={() => {
                           setTypeSearch(t.name);
                           setIsTypeDropdownOpen(false);
@@ -406,8 +406,8 @@ export default function EditItemModal({ item, onClose, onSaved }: {
                       </button>
                     ))
                   ) : typeSearch ? (
-                    <div className="px-4 py-2 text-sm text-gray-500 italic">
-                      Create new type: <span className="font-semibold text-blue-600 dark:text-blue-400">"{typeSearch}"</span>
+                    <div className="font-mono text-[11px] text-gray-500 px-3 py-2">
+                      Create new type: &ldquo;{typeSearch}&rdquo;
                     </div>
                   ) : null}
                 </div>
@@ -416,197 +416,210 @@ export default function EditItemModal({ item, onClose, onSaved }: {
 
             {/* Tags / Attributes */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 flex items-center gap-1.5">
-                <Tag size={16} className="text-gray-400" /> Attributes
-              </label>
+              <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500 mb-1.5">Attributes</label>
 
               {availableTags.length > 5 && (
                 <input
                   value={tagSearch}
                   onChange={(e) => setTagSearch(e.target.value)}
                   placeholder="Filter attributes..."
-                  className="w-full mb-2 px-3 py-1.5 text-xs bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg outline-none focus:border-indigo-400 transition-colors"
+                  className="w-full mb-2 border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2.5 outline-none transition-colors text-gray-100 text-sm placeholder:text-gray-700"
                 />
               )}
 
               {/* Group Section (amber, radio — pick one) */}
-              <div className="flex items-start gap-2 mb-1.5">
-                <span className="text-[9px] font-bold text-amber-600 uppercase tracking-wider shrink-0 w-9 pt-1.5">Group</span>
-                <div className="flex flex-wrap gap-1.5 items-center flex-1">
-                  {availableTags.filter((t: any) => t.is_parent && (!tagSearch || t.name.toLowerCase().includes(tagSearch.toLowerCase()))).map((tag: any) => {
-                    const isSelected = selectedTags.includes(tag.name);
-                    return (
-                      <button key={tag.id ?? tag.name} type="button" onClick={() => toggleTag(tag.name)}
-                        className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors flex items-center gap-1 ${
-                          isSelected
-                            ? 'bg-amber-500 border-amber-500 text-white dark:bg-amber-600 dark:border-amber-600'
-                            : 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100 dark:bg-amber-900/20 dark:border-amber-800 dark:text-amber-400'
-                        }`}>
-                        {isSelected && <Check size={10} />}
-                        {tag.name}
+              <div className="flex items-start gap-2 mb-2">
+                  <span className="font-mono text-[9px] tracking-[0.12em] uppercase text-amber-600/70 shrink-0 pt-1 w-10">Group</span>
+                  <div className="flex flex-wrap gap-1.5 items-center flex-1">
+                    {availableTags.filter((t: any) => t.is_parent && (!tagSearch || t.name.toLowerCase().includes(tagSearch.toLowerCase()))).map((tag: any) => {
+                      const isSelected = selectedTags.includes(tag.name);
+                      return (
+                        <button key={tag.id ?? tag.name} type="button" onClick={() => toggleTag(tag.name)}
+                          className={isSelected
+                            ? 'flex items-center gap-1 font-mono text-[10px] px-2 py-0.5 border border-amber-600 bg-amber-600/10 text-amber-400'
+                            : 'font-mono text-[10px] px-2 py-0.5 border border-gray-700 text-gray-500 hover:border-amber-700 hover:text-amber-400 transition-colors'
+                          }>
+                          {isSelected && <Check size={9} />}
+                          {tag.name}
+                        </button>
+                      );
+                    })}
+                    {isAddingGroup ? (
+                      <input
+                        ref={newGroupInputRef}
+                        value={newGroupInput}
+                        onChange={(e) => setNewGroupInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); handleAddGroup(newGroupInput); }
+                          else if (e.key === 'Escape') { setIsAddingGroup(false); setNewGroupInput(''); }
+                        }}
+                        onBlur={() => { setIsAddingGroup(false); setNewGroupInput(''); }}
+                        placeholder="Group name..."
+                        className="font-mono text-[10px] border border-amber-700 bg-gray-950 focus:border-amber-500 px-2 py-0.5 outline-none text-amber-400 placeholder:text-amber-900 w-32"
+                      />
+                    ) : (
+                      <button type="button" onClick={() => setIsAddingGroup(true)}
+                        className="font-mono text-[10px] px-2 py-0.5 border border-dashed border-amber-800 text-amber-700 hover:border-amber-600 hover:text-amber-500 transition-colors"
+                        title="Add group">+
                       </button>
-                    );
-                  })}
-                  {isAddingGroup ? (
-                    <input
-                      ref={newGroupInputRef}
-                      value={newGroupInput}
-                      onChange={(e) => setNewGroupInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); handleAddGroup(newGroupInput); }
-                        else if (e.key === 'Escape') { setIsAddingGroup(false); setNewGroupInput(''); }
-                      }}
-                      onBlur={() => { setIsAddingGroup(false); setNewGroupInput(''); }}
-                      placeholder="New group name..."
-                      className="text-xs rounded-full border-amber-300 dark:border-amber-700 dark:bg-gray-900 bg-amber-50 focus:border-amber-500 focus:ring-amber-500/30 px-3 py-1 border outline-none transition-all w-40 shadow-sm"
-                    />
-                  ) : (
-                    <button type="button" onClick={() => setIsAddingGroup(true)}
-                      className="w-7 h-7 flex items-center justify-center rounded-full border border-dashed border-amber-300 dark:border-amber-700 text-amber-500 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors"
-                      title="Add group">+
-                    </button>
-                  )}
+                    )}
+                  </div>
                 </div>
-              </div>
 
               {/* Tags Section (blue, multi-select) */}
               <div className="flex items-start gap-2">
-                <span className="text-[9px] font-bold text-blue-600 uppercase tracking-wider shrink-0 w-9 pt-1.5">Tags</span>
+                <span className="font-mono text-[9px] tracking-[0.12em] uppercase text-blue-600/70 shrink-0 pt-1 w-10">Tags</span>
                 <div className="flex-1">
-                <div className="flex flex-wrap gap-1.5 mb-1 items-center">
-                  {availableTags.filter((t: any) => !t.is_parent && !selectedTags.includes(t.name) && (!tagSearch || t.name.toLowerCase().includes(tagSearch.toLowerCase()))).map((tag: any) => (
-                    <button key={tag.id} type="button" onClick={() => toggleTag(tag.name)}
-                      className="px-3 py-1.5 rounded-full text-xs font-medium border bg-gray-50 border-gray-200 text-gray-600 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-700 dark:bg-gray-800/50 dark:border-gray-700 dark:text-gray-400 dark:hover:bg-blue-900/20 transition-colors">
-                      {tag.name}
-                    </button>
-                  ))}
-                  {isAddingTag ? (
-                    <input
-                      ref={newTagInputRef}
-                      value={newTagInput}
-                      onChange={(e) => setNewTagInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); handleAddNewTag(newTagInput); }
-                        else if (e.key === 'Escape') { setIsAddingTag(false); setNewTagInput(''); }
-                      }}
-                      onBlur={() => setIsAddingTag(false)}
-                      placeholder="Type and press Enter..."
-                      className="text-xs rounded-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 bg-white focus:border-blue-500 focus:ring-blue-500/30 px-3 py-1.5 border outline-none transition-all w-48 shadow-sm"
-                    />
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setIsAddingTag(true)}
-                      className="w-7 h-7 flex items-center justify-center rounded-full border border-dashed border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-blue-500 hover:border-blue-400 transition-colors"
-                      title="Add tag"
-                    >
-                      +
-                    </button>
-                  )}
-                </div>
+                  <div className="flex flex-wrap gap-1.5 mb-1.5 items-center">
+                    {availableTags.filter((t: any) => !t.is_parent && !selectedTags.includes(t.name) && (!tagSearch || t.name.toLowerCase().includes(tagSearch.toLowerCase()))).map((tag: any) => (
+                      <button key={tag.id} type="button" onClick={() => toggleTag(tag.name)}
+                        className="font-mono text-[10px] px-2 py-0.5 border border-gray-700 text-gray-500 hover:border-blue-700 hover:text-blue-400 transition-colors">
+                        {tag.name}
+                      </button>
+                    ))}
+                    {isAddingTag ? (
+                      <input
+                        ref={newTagInputRef}
+                        value={newTagInput}
+                        onChange={(e) => setNewTagInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); handleAddNewTag(newTagInput); }
+                          else if (e.key === 'Escape') { setIsAddingTag(false); setNewTagInput(''); }
+                        }}
+                        onBlur={() => setIsAddingTag(false)}
+                        placeholder="Tag name..."
+                        className="font-mono text-[10px] border border-blue-700 bg-gray-950 focus:border-blue-500 px-2 py-0.5 outline-none text-blue-400 placeholder:text-blue-900 w-32"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setIsAddingTag(true)}
+                        className="font-mono text-[10px] px-2 py-0.5 border border-dashed border-blue-800 text-blue-700 hover:border-blue-600 hover:text-blue-500 transition-colors"
+                        title="Add tag"
+                      >
+                        +
+                      </button>
+                    )}
+                  </div>
 
-                {/* Selected Tags Box */}
-                <div className="w-full min-h-[36px] p-1.5 rounded-lg border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-950 shadow-sm flex flex-wrap gap-1.5 items-start">
-                  {selectedTags.filter(st => !availableTags.find((t: any) => t.name === st)?.is_parent).length === 0 ? (
-                    <span className="text-xs text-gray-400 p-1 italic">No tags selected...</span>
-                  ) : (
-                    selectedTags
-                      .filter(st => !availableTags.find((t: any) => t.name === st)?.is_parent)
-                      .map(st => (
-                        <button key={st} type="button" onClick={() => toggleTag(st)}
-                          className="px-3 py-1 rounded-md text-xs font-medium bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-900/40 dark:border-blue-800 dark:text-blue-300 transition-colors flex items-center gap-1.5 group">
-                          {st}
-                          <span className="opacity-50 group-hover:opacity-100 group-hover:text-red-500 transition-all"><X size={12} /></span>
-                        </button>
-                      ))
-                  )}
-                </div>
+                  {/* Selected Tags Box */}
+                  <div className="flex flex-wrap gap-1.5 min-h-[28px] p-1.5 border border-gray-800 bg-gray-950">
+                    {selectedTags.filter(st => !availableTags.find((t: any) => t.name === st)?.is_parent).length === 0 ? (
+                      <span className="font-mono text-[10px] text-gray-700 p-0.5">No tags selected...</span>
+                    ) : (
+                      selectedTags
+                        .filter(st => !availableTags.find((t: any) => t.name === st)?.is_parent)
+                        .map(st => (
+                          <button key={st} type="button" onClick={() => toggleTag(st)}
+                            className="flex items-center gap-1 font-mono text-[10px] px-2 py-0.5 border border-blue-700 bg-blue-700/10 text-blue-400 hover:border-red-700 hover:bg-red-900/10 hover:text-red-400 transition-colors">
+                            {st}
+                            <X size={9} />
+                          </button>
+                        ))
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Quantity and Quality */}
-            <div className="bg-gray-50 dark:bg-gray-900/50 p-4 rounded-xl border border-gray-100 dark:border-gray-800">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-4 w-full mr-4">
-                  <div className="w-1/3">
-                    <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Total Quantity</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={totalQuantity || ''}
-                      onChange={(e) => setTotalQuantity(parseInt(e.target.value) || 0)}
-                      onBlur={() => { if (!totalQuantity || totalQuantity < 1) setTotalQuantity(1); }}
-                      className="w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-950 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500/50 px-3 py-2 border outline-none transition-all font-bold"
-                    />
-                  </div>
-
-                  {!isSplit && (
-                    <div className="flex-1">
-                      <label className="block text-xs font-semibold text-gray-600 dark:text-gray-400 mb-1">Overall Quality</label>
-                      <select
-                        value={globalQuality}
-                        onChange={(e) => setGlobalQuality(e.target.value)}
-                        className="w-full rounded-md border-gray-300 dark:border-gray-700 dark:bg-gray-950 bg-white shadow-sm focus:border-blue-500 focus:ring-blue-500/50 px-3 py-2 border outline-none transition-all appearance-none bg-[url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%239CA3AF%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E')] bg-[length:12px_12px] bg-[right_12px_center] bg-no-repeat text-sm font-medium"
-                      >
-                        <option value="Excellent">Excellent</option>
-                        <option value="Good">Good</option>
-                        <option value="Fair">Fair</option>
-                        <option value="Poor">Poor</option>
-                      </select>
-                    </div>
-                  )}
+            <div className="border border-gray-800 bg-gray-950/50 p-4">
+              <div className="flex items-end gap-3 mb-3">
+                <div className="w-1/3">
+                  <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500 mb-1.5">Total Qty</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={totalQuantity || ''}
+                    onChange={(e) => setTotalQuantity(parseInt(e.target.value) || 0)}
+                    onBlur={() => { if (!totalQuantity || totalQuantity < 1) setTotalQuantity(1); }}
+                    className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2.5 outline-none transition-colors text-gray-100 text-sm placeholder:text-gray-700"
+                  />
                 </div>
 
-                <button
-                  type="button"
-                  onClick={handleToggleSplit}
-                  className={`shrink-0 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-xs font-semibold border transition-all mt-4 ${
-                    isSplit
-                      ? 'bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/40 dark:text-blue-400 dark:border-blue-700'
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-700 dark:text-gray-300 dark:hover:bg-gray-700'
-                  }`}
-                >
-                  <SplitSquareVertical size={14} />
-                  {isSplit ? 'Splitting' : 'Split Quality'}
-                </button>
+                {!isSplit && (
+                  <div className="flex-1">
+                    <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500 mb-1.5">Condition</label>
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setIsConditionOpen(v => !v)}
+                        onBlur={() => setTimeout(() => setIsConditionOpen(false), 150)}
+                        className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2.5 pr-8 outline-none transition-colors text-gray-100 text-sm text-left cursor-pointer"
+                      >
+                        {globalQuality}
+                      </button>
+                      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" size={14} />
+                      {isConditionOpen && (
+                        <div className="absolute z-20 w-full bg-gray-900 border border-gray-700 border-t-0 top-full">
+                          {(['Excellent', 'Good', 'Fair', 'Poor'] as const).map(q => (
+                            <button
+                              key={q}
+                              type="button"
+                              onMouseDown={() => { setGlobalQuality(q); setIsConditionOpen(false); }}
+                              className="w-full text-left px-3 py-2 hover:bg-gray-800 text-gray-300 text-sm transition-colors border-b border-gray-800 last:border-0"
+                            >
+                              {q}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="shrink-0 flex flex-col">
+                  <span className="block font-mono text-[10px] mb-1.5 invisible">_</span>
+                  <button
+                    type="button"
+                    onClick={handleToggleSplit}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-2.5 leading-5 font-mono text-[10px] tracking-wider uppercase border transition-colors ${
+                      isSplit
+                        ? 'border-blue-600 bg-blue-600/10 text-blue-400'
+                        : 'border-gray-700 text-gray-500 hover:border-gray-500 hover:text-gray-300'
+                    }`}
+                  >
+                    <SplitSquareVertical size={12} />
+                    {isSplit ? 'Splitting' : 'Split'}
+                  </button>
+                </div>
               </div>
 
               {isSplit && (
-                <div className="pt-4 border-t border-gray-200 dark:border-gray-800 animate-in fade-in slide-in-from-top-2 duration-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-xs font-medium text-gray-500">Allocate condition of all {totalQuantity} items:</span>
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                <div className="pt-3 border-t border-gray-800">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-mono text-[10px] text-gray-600">Allocate {totalQuantity} items by condition:</span>
+                    <span className={`font-mono text-[10px] px-2 py-0.5 border ${
                       currentSplitTotal === totalQuantity
-                        ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400'
-                        : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400'
+                        ? 'border-green-700 text-green-400'
+                        : 'border-red-700 text-red-400'
                     }`}>
-                      {currentSplitTotal} / {totalQuantity} Assigned
+                      {currentSplitTotal} / {totalQuantity}
                     </span>
                   </div>
 
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-4 gap-2">
                     {(['Excellent', 'Good', 'Fair', 'Poor'] as const).map((q) => (
-                      <div key={q} className="bg-white dark:bg-gray-950 p-2 rounded-lg border border-gray-200 dark:border-gray-800 shadow-sm flex flex-col items-center">
-                        <label className={`text-[10px] uppercase tracking-wider font-bold mb-1.5 ${
-                          q === 'Excellent' ? 'text-green-600 dark:text-green-400' :
-                          q === 'Good' ? 'text-blue-600 dark:text-blue-400' :
-                          q === 'Fair' ? 'text-yellow-600 dark:text-yellow-500' : 'text-red-600 dark:text-red-400'
+                      <div key={q} className="border border-gray-800 bg-gray-900 p-2 flex flex-col items-center gap-1">
+                        <label className={`font-mono text-[10px] uppercase tracking-wider ${
+                          q === 'Excellent' ? 'text-green-400' :
+                          q === 'Good' ? 'text-blue-400' :
+                          q === 'Fair' ? 'text-yellow-500' : 'text-red-400'
                         }`}>{q}</label>
                         <input
                           type="number"
                           min="0"
                           value={splitQty[q]}
                           onChange={(e) => handleSplitChange(q, parseInt(e.target.value) || 0)}
-                          className="w-full text-center text-lg font-semibold bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded outline-none focus:border-blue-500 py-1"
+                          className="w-full text-center text-base font-semibold border border-gray-700 bg-gray-950 focus:border-blue-500 outline-none py-1 text-gray-100"
                         />
                       </div>
                     ))}
                   </div>
 
                   {currentSplitTotal !== totalQuantity && (
-                    <p className="text-[11px] text-red-500 mt-3 flex items-center justify-center gap-1 font-medium bg-red-50 dark:bg-red-900/10 p-1.5 rounded-md border border-red-100 dark:border-red-900/30">
-                      <Info size={12} /> The allocated qualities must sum exactly to your total quantity ({totalQuantity}).
+                    <p className="font-mono text-[10px] text-red-400 mt-2 flex items-center gap-1">
+                      <Info size={11} /> Quantities must sum to {totalQuantity}.
                     </p>
                   )}
                 </div>
@@ -614,34 +627,34 @@ export default function EditItemModal({ item, onClose, onSaved }: {
             </div>
 
             {/* Notes */}
-            <div className="flex-1 flex flex-col pt-1">
-              <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5">Observations / Notes</label>
+            <div>
+              <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500 mb-1.5">Notes</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Details on condition, manufacturer info, etc..."
-                className="w-full h-24 rounded-lg border-gray-300 dark:border-gray-700 dark:bg-gray-950 bg-gray-50 shadow-sm focus:border-blue-500 focus:ring-blue-500/50 px-4 py-3 border outline-none resize-none transition-all custom-scrollbar placeholder:text-gray-400 text-sm"
+                className="w-full h-20 border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2 outline-none resize-none text-gray-100 text-sm placeholder:text-gray-700 custom-scrollbar"
               />
             </div>
 
             {/* Matched asset warning */}
             {matchedAsset && (
-              <div className="rounded-xl border border-amber-300 dark:border-amber-700 overflow-hidden">
-                <div className="flex min-h-[120px]">
-                  <div className="w-32 shrink-0 relative bg-amber-100 dark:bg-amber-900/30">
+              <div className="border border-amber-800 bg-amber-900/10 overflow-hidden">
+                <div className="flex min-h-[100px]">
+                  <div className="w-28 shrink-0 relative bg-gray-900">
                     {matchedAsset.photo_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={matchedAsset.photo_url} alt={matchedAsset.name} className="absolute inset-0 w-full h-full object-cover" />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <Package size={28} className="text-amber-400" />
+                        <Package size={24} className="text-amber-700" />
                       </div>
                     )}
                   </div>
-                  <div className="flex-1 bg-amber-50 dark:bg-amber-900/20 p-4 flex flex-col gap-3 min-w-0">
+                  <div className="flex-1 p-3 flex flex-col gap-2 min-w-0">
                     <div>
-                      <p className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider mb-1">Existing asset matches</p>
-                      <p className="text-sm font-semibold text-gray-800 dark:text-gray-100 truncate">{matchedAsset.name}</p>
+                      <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-amber-500 mb-1">Existing asset matches</p>
+                      <p className="text-sm font-semibold text-gray-100 truncate">{matchedAsset.name}</p>
                       {matchedAsset.attributes?.length > 0 && (
                         <div className="flex flex-wrap gap-1 mt-1.5">
                           {[...matchedAsset.attributes].sort((a: string, b: string) => {
@@ -652,18 +665,17 @@ export default function EditItemModal({ item, onClose, onSaved }: {
                           }).map((a: string) => {
                             const isParent = availableTags.find((t: any) => t.name === a)?.is_parent ?? false;
                             return (
-                              <span key={a} className={`text-[10px] px-1.5 py-0.5 rounded leading-none font-medium ${
+                              <span key={a} className={`font-mono text-[10px] px-1.5 py-0.5 border ${
                                 isParent
-                                  ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-400'
-                                  : 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-300'
+                                  ? 'border-amber-700 bg-amber-900/20 text-amber-400'
+                                  : 'border-blue-800 bg-blue-900/20 text-blue-400'
                               }`}>{a}</span>
                             );
                           })}
                         </div>
                       )}
                     </div>
-                    <p className="text-xs text-amber-700 dark:text-amber-400">Would you like to use this asset instead?</p>
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 mt-auto">
                       <button
                         type="button"
                         onClick={async () => {
@@ -704,14 +716,14 @@ export default function EditItemModal({ item, onClose, onSaved }: {
                             setLoading(false);
                           }
                         }}
-                        className="flex-1 py-2 text-xs font-semibold rounded-lg bg-amber-500 hover:bg-amber-600 text-white transition-colors"
+                        className="flex-1 py-1.5 font-mono text-[10px] tracking-wider uppercase border border-amber-600 bg-amber-600/10 text-amber-400 hover:bg-amber-600/20 transition-colors"
                       >
                         Use Asset
                       </button>
                       <button
                         type="button"
                         onClick={() => setMatchedAsset(null)}
-                        className="flex-1 py-2 text-xs font-semibold rounded-lg border border-amber-300 dark:border-amber-700 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+                        className="flex-1 py-1.5 font-mono text-[10px] tracking-wider uppercase border border-gray-700 text-gray-500 hover:text-gray-300 hover:bg-gray-800 transition-colors"
                       >
                         Keep My Image
                       </button>
@@ -722,38 +734,35 @@ export default function EditItemModal({ item, onClose, onSaved }: {
             )}
 
             {/* Save as asset toggle */}
-            <div className="pt-2 mt-auto border-t border-gray-100 dark:border-gray-800">
+            <div className="mt-auto">
               <button
                 type="button"
                 onClick={() => setSaveAsAsset(v => !v)}
-                className={`w-full flex items-center gap-2.5 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all mb-3 ${
+                className={`w-full flex items-center gap-2.5 px-3 py-2 border text-sm font-medium transition-all mb-3 ${
                   saveAsAsset
-                    ? 'bg-amber-50 border-amber-300 text-amber-700 dark:bg-amber-900/20 dark:border-amber-700 dark:text-amber-400'
-                    : 'bg-gray-50 border-gray-200 text-gray-500 dark:bg-gray-900 dark:border-gray-800 dark:text-gray-400 hover:border-amber-300 hover:text-amber-600'
+                    ? 'border-amber-700 bg-amber-900/10 text-amber-400'
+                    : 'border-gray-700 text-gray-500 hover:border-amber-800 hover:text-amber-600'
                 }`}
               >
-                <Bookmark size={15} className={saveAsAsset ? 'fill-amber-500 text-amber-500' : ''} />
-                <span>{saveAsAsset ? 'Will be saved as a reusable asset' : 'Save as reusable asset'}</span>
-                <div className={`ml-auto w-8 h-4 rounded-full transition-colors relative shrink-0 ${saveAsAsset ? 'bg-amber-400' : 'bg-gray-300 dark:bg-gray-700'}`}>
-                  <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-all ${saveAsAsset ? 'left-4' : 'left-0.5'}`} />
-                </div>
+                <span className={`inline-block w-3 h-3 border transition-colors ${saveAsAsset ? 'border-amber-500 bg-amber-500' : 'border-gray-600'}`} />
+                <span className="font-mono text-[10px] tracking-wider uppercase">{saveAsAsset ? 'Will save as reusable asset' : 'Save as reusable asset'}</span>
               </button>
 
               <button
                 disabled={loading || (isSplit && currentSplitTotal !== totalQuantity) || !!matchedAsset}
                 type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-md flex justify-center items-center gap-2 transition-all transform active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100 disabled:cursor-not-allowed"
+                className="w-full border border-blue-600 bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 font-mono text-[11px] tracking-wider uppercase py-3 flex justify-center items-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {loading ? (
-                  <span className="flex items-center gap-2">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <>
+                    <svg className="animate-spin h-4 w-4 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    Saving Changes...
-                  </span>
+                    Saving...
+                  </>
                 ) : (
-                  <><Check size={20} /> Save Changes</>
+                  <><Check size={14} /> Save Changes</>
                 )}
               </button>
             </div>

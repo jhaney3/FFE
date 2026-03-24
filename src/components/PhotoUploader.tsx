@@ -17,49 +17,47 @@ export default function PhotoUploader() {
   }, []);
 
   return (
-    <div className="border-b border-gray-200 dark:border-gray-800 bg-gray-50/80 dark:bg-gray-900/40 flex flex-col items-center">
-      {/* Header bar that doubles as the toggle */}
-      <button 
+    <div className="border-b border-gray-800 flex flex-col items-center">
+      {/* Header bar — toggle */}
+      <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className="w-full flex items-center justify-between p-4 hover:bg-black/5 dark:hover:bg-white/5 transition-colors focus:outline-none"
+        className="w-full flex items-center justify-between px-4 py-2.5 hover:bg-gray-900/60 transition-colors focus:outline-none"
       >
-        <div className="flex items-center gap-2 text-gray-800 dark:text-gray-200 font-semibold tracking-tight">
-          <Smartphone size={18} className="text-indigo-500" />
-          <span>Mobile Triage Camera</span>
+        <div className="flex items-center gap-2">
+          <Smartphone size={12} className="text-blue-500" />
+          <span className="font-mono text-[10px] tracking-[0.18em] uppercase text-gray-500">Mobile Capture</span>
         </div>
-        <div className="text-gray-400">
-          {isCollapsed ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+        <div className="text-gray-700">
+          {isCollapsed ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
         </div>
       </button>
 
       {/* Expandable Content */}
-      <div 
+      <div
         className={`w-full overflow-hidden transition-all duration-300 ease-in-out flex flex-col items-center ${
-          isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[300px] opacity-100 pb-5 px-5'
+          isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[280px] opacity-100 pb-4 px-4'
         }`}
       >
-        <div className="bg-white p-3 rounded-2xl shadow-sm border border-gray-200/50 hover:shadow-md transition-shadow">
+        <div className="border border-gray-800 p-2 bg-gray-900">
           {cameraUrl ? (
-            <QRCodeSVG 
-              value={cameraUrl} 
-              size={160} 
-              bgColor="#ffffff" 
-              fgColor="#1e1b4b" 
-              level="Q" 
-              marginSize={2}
+            <QRCodeSVG
+              value={cameraUrl}
+              size={148}
+              bgColor="#0c0e1a"
+              fgColor="#dde2f0"
+              level="Q"
+              marginSize={1}
             />
           ) : (
-            <div className="w-[160px] h-[160px] bg-gray-100 animate-pulse rounded-xl flex items-center justify-center">
-              <QrCode className="text-gray-300 w-10 h-10" />
+            <div className="w-[148px] h-[148px] bg-gray-900 border border-gray-800 flex items-center justify-center">
+              <QrCode className="text-gray-700 w-8 h-8" />
             </div>
           )}
         </div>
 
-        <div className="mt-4 text-center space-y-2 w-full">
-          <p className="text-xs text-gray-500 font-medium px-4">
-            Scan to open the rapid-capture camera. Photos will instantly sync here!
-          </p>
-        </div>
+        <p className="mt-3 text-[11px] text-gray-600 text-center px-2 leading-relaxed">
+          Scan to open rapid-capture camera. Photos sync instantly.
+        </p>
       </div>
     </div>
   );
