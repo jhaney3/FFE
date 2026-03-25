@@ -76,6 +76,7 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
   // ── Refs ──────────────────────────────────────────────────────────────────
   const nameRef    = useRef<HTMLSpanElement | null>(null);
   const { lowBandwidth } = useLowBandwidth();
+  const [revealedImages, setRevealedImages] = useState<Set<string>>(new Set());
   const zoneRef    = useRef<HTMLDivElement | null>(null);
   const popoutRef  = useRef<HTMLDivElement | null>(null);
   const svgLineRef = useRef<SVGLineElement | null>(null);
@@ -559,8 +560,16 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
               <div className="flex-1 space-y-1.5 overflow-y-auto pr-1 min-h-0 custom-scrollbar">
                 {items.length > 0 ? items.map(item => (
                   <div key={item.id} className="group/item flex items-center gap-2.5 p-2 border border-gray-800 bg-gray-950/50 relative">
-                    {item.photo_url && !lowBandwidth ? (
+                    {item.photo_url && (!lowBandwidth || revealedImages.has(item.id)) ? (
                       <img src={item.photo_url} alt={item.ItemTypes?.name || 'Item'} className="w-9 h-9 object-cover bg-gray-800 shrink-0" loading="lazy" />
+                    ) : item.photo_url ? (
+                      <div
+                        onClick={() => setRevealedImages(prev => { const s = new Set(prev); s.add(item.id); return s; })}
+                        title="Click to load image"
+                        className="w-9 h-9 bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-600 shrink-0 cursor-pointer hover:text-gray-400 hover:border-gray-600 transition-colors"
+                      >
+                        <Package size={14} />
+                      </div>
                     ) : (
                       <div className="w-9 h-9 bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-600 shrink-0"><Package size={14} /></div>
                     )}

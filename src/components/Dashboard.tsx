@@ -33,6 +33,7 @@ import MassEditModal from './MassEditModal';
 
 export default function Dashboard() {
   const { lowBandwidth } = useLowBandwidth();
+  const [revealedImages, setRevealedImages] = useState<Set<string>>(new Set());
   const [items, setItems] = useState<any[]>([]);
   const [tagMeta, setTagMeta] = useState<Map<string, boolean>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -367,12 +368,20 @@ export default function Dashboard() {
 
                       {/* Photo */}
                       <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                        <a href={item.photo_url} target="_blank" rel="noreferrer" className="block w-10 h-10 overflow-hidden border border-gray-800 group-hover:border-gray-700 shrink-0 transition-colors">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          {lowBandwidth
-                            ? <div className="w-full h-full bg-gray-900 flex items-center justify-center text-gray-700"><Package size={14} /></div>
-                            : <img src={item.photo_url} alt={item.ItemTypes?.name} className="w-full h-full object-cover" loading="lazy" />}
-                        </a>
+                        {(!lowBandwidth || revealedImages.has(item.id)) ? (
+                          <a href={item.photo_url} target="_blank" rel="noreferrer" className="block w-10 h-10 overflow-hidden border border-gray-800 group-hover:border-gray-700 shrink-0 transition-colors">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={item.photo_url} alt={item.ItemTypes?.name} className="w-full h-full object-cover" loading="lazy" />
+                          </a>
+                        ) : (
+                          <div
+                            onClick={() => setRevealedImages(prev => { const s = new Set(prev); s.add(item.id); return s; })}
+                            title="Click to load image"
+                            className="w-10 h-10 bg-gray-900 border border-gray-800 flex items-center justify-center text-gray-700 cursor-pointer hover:text-gray-500 hover:border-gray-600 transition-colors shrink-0"
+                          >
+                            <Package size={14} />
+                          </div>
+                        )}
                       </td>
 
                       {/* Type & Attributes */}
