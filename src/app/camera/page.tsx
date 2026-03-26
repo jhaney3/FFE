@@ -94,7 +94,7 @@ function CameraCapture() {
       const { error: upErr } = await supabase.storage.from('inventory_photos').upload(name, file);
       if (upErr) throw upErr;
       const { data: { publicUrl } } = supabase.storage.from('inventory_photos').getPublicUrl(name);
-      const { data: types } = await supabase.from('ItemTypes').select('*').order('name');
+      const { data: types } = await supabase.rpc('get_types_for_uid', { p_uid: uid });
       if (types) setItemTypes(types);
       setPhase({ phase: 'filling', photoUrl: publicUrl });
     } catch (err: any) {
