@@ -40,6 +40,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
 
   const [notes, setNotes] = useState('');
   const [saveAsAsset, setSaveAsAsset] = useState(false);
+  const [suggestionApplied, setSuggestionApplied] = useState(false);
   const [matchedAsset, setMatchedAsset] = useState<any>(null);
   const [pendingTypeId, setPendingTypeId] = useState<string | null>(null);
 
@@ -98,6 +99,49 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
 
     return () => clearTimeout(timer);
   }, [typeSearch, selectedTags, itemTypes]);
+
+  // Effect A — apply suggestion type, quantity, quality, notes once itemTypes loads
+  useEffect(() => {
+    if (suggestionApplied) return;
+    if (itemTypes.length === 0) return;
+    if (!photo.suggestion_type_name) return;
+
+    setSuggestionApplied(true);
+    setTypeSearch(photo.suggestion_type_name); // triggers existing [typeSearch] effect → fetchTagsForType
+
+    const hasSplit = [photo.suggestion_qty_excellent, photo.suggestion_qty_good,
+                      photo.suggestion_qty_fair, photo.suggestion_qty_poor]
+      .some((v: any) => v != null);
+
+    if (hasSplit) {
+      const ex = photo.suggestion_qty_excellent ?? 0;
+      const go = photo.suggestion_qty_good      ?? 0;
+      const fa = photo.suggestion_qty_fair      ?? 0;
+      const po = photo.suggestion_qty_poor      ?? 0;
+      setTotalQuantity(ex + go + fa + po || 1);
+      setSplitQty({ Excellent: ex, Good: go, Fair: fa, Poor: po });
+      const primary = (Object.entries({ Excellent: ex, Good: go, Fair: fa, Poor: po }) as [string, number][])
+        .sort(([, a], [, b]) => b - a)[0][0];
+      setGlobalQuality(primary);
+      setIsSplit(true);
+    } else {
+      if (photo.suggestion_quantity) setTotalQuantity(photo.suggestion_quantity);
+      if (photo.suggestion_quality) setGlobalQuality(photo.suggestion_quality);
+    }
+
+    if (photo.suggestion_notes) setNotes(photo.suggestion_notes);
+  }, [itemTypes, suggestionApplied]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Effect B — apply suggested attributes once availableTags loads (chained from Effect A → fetchTagsForType)
+  useEffect(() => {
+    if (!suggestionApplied) return;
+    if (!photo.suggestion_attributes?.length) return;
+    if (availableTags.length === 0) return;
+
+    const validNames = new Set(availableTags.map((t: any) => t.name));
+    const valid = (photo.suggestion_attributes as string[]).filter((a: string) => validNames.has(a));
+    if (valid.length > 0) setSelectedTags(valid);
+  }, [availableTags, suggestionApplied]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchTypes = async () => {
     const { data } = await supabase.from('ItemTypes').select('*').order('name');
@@ -395,6 +439,14 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
               <X size={16} />
             </button>
           </div>
+
+          {photo.suggestion_type_name && (
+            <div className="mx-7 mb-2 px-3 py-1.5 border border-blue-700/40 bg-blue-900/10">
+              <span className="font-mono text-[9px] tracking-[0.15em] uppercase text-blue-400/70">
+                Pre-filled from mobile suggestion — edit freely
+              </span>
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }} className="flex-1 flex flex-col space-y-5 px-7 pb-7">
 

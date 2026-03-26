@@ -3,110 +3,607 @@
 import { useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { Camera, CheckCircle2, Loader2, RefreshCcw } from 'lucide-react';
+import {
+  Camera, CheckCircle2, Loader2,
+  ChevronRight, ChevronLeft, Check, Plus, Minus,
+} from 'lucide-react';
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+type Phase =
+  | { phase: 'idle' }
+  | { phase: 'uploading' }
+  | { phase: 'filling';    photoUrl: string }
+  | { phase: 'submitting'; photoUrl: string }
+  | { phase: 'success' };
+
+type QualityKey = 'Excellent' | 'Good' | 'Fair' | 'Poor';
+
+const Q: Record<QualityKey, { text: string; border: string; activeBg: string; short: string }> = {
+  Excellent: { text: 'text-emerald-400', border: 'border-emerald-700', activeBg: 'bg-emerald-950/60', short: 'EXC' },
+  Good:      { text: 'text-blue-400',    border: 'border-blue-700',    activeBg: 'bg-blue-950/60',    short: 'GOOD' },
+  Fair:      { text: 'text-amber-400',   border: 'border-amber-700',   activeBg: 'bg-amber-950/60',   short: 'FAIR' },
+  Poor:      { text: 'text-red-400',     border: 'border-red-800',     activeBg: 'bg-red-950/60',     short: 'POOR' },
+};
+
+// ─── Shared primitives ───────────────────────────────────────────────────────
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="font-mono text-[8px] tracking-[0.25em] uppercase text-slate-600 mb-2">
+      {children}
+    </p>
+  );
+}
+
+// Corner bracket decoration (tactical UI element)
+function Brackets({ color = 'border-slate-700' }: { color?: string }) {
+  const cls = `absolute w-3 h-3 ${color}`;
+  return (
+    <>
+      <span className={`${cls} -top-px -left-px border-t border-l`} />
+      <span className={`${cls} -top-px -right-px border-t border-r`} />
+      <span className={`${cls} -bottom-px -left-px border-b border-l`} />
+      <span className={`${cls} -bottom-px -right-px border-b border-r`} />
+    </>
+  );
+}
+
+// ─── Main component ───────────────────────────────────────────────────────────
 
 function CameraCapture() {
-  const searchParams = useSearchParams();
-  const uid = searchParams.get('uid') ?? 'unknown';
-  const [uploading, setUploading] = useState(false);
-  const [success, setSuccess] = useState(false);
+  const uid = useSearchParams().get('uid') ?? 'unknown';
+  const [phase, setPhase] = useState<Phase>({ phase: 'idle' });
+  const [formStep, setFormStep] = useState<1 | 2>(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleCapture = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Suggestions form state
+  const [itemTypes, setItemTypes]         = useState<{ id: string; name: string }[]>([]);
+  const [typeSearch, setTypeSearch]       = useState('');
+  const [typeConfirmed, setTypeConfirmed] = useState(false);
+  const [showDrop, setShowDrop]           = useState(false);
+  const [availableAttrs, setAvailableAttrs] = useState<{ id: string; name: string; is_parent: boolean }[]>([]);
+  const [selectedTags, setSelectedTags]   = useState<string[]>([]);
+  const [tagFilter, setTagFilter]         = useState('');
+  const [qty, setQty]                     = useState(1);
+  const [quality, setQuality]             = useState<QualityKey>('Good');
+  const [isSplit, setIsSplit]             = useState(false);
+  const [splitQty, setSplitQty]           = useState({ Excellent: 0, Good: 1, Fair: 0, Poor: 0 });
+  const [notes, setNotes]                 = useState('');
+
+  const reset = () => {
+    setFormStep(1);
+    setTypeSearch(''); setTypeConfirmed(false); setShowDrop(false);
+    setAvailableAttrs([]); setSelectedTags([]);
+    setQty(1); setQuality('Good');
+    setIsSplit(false); setSplitQty({ Excellent: 0, Good: 1, Fair: 0, Poor: 0 });
+    setNotes('');
+    setTagFilter('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  // ── Handlers ────────────────────────────────────────────────────────────
+
+  const handleCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files?.[0]) return;
+    const file = e.target.files[0];
+    setPhase({ phase: 'uploading' });
     try {
-      setUploading(true);
-      setSuccess(false);
-
-      if (!event.target.files || event.target.files.length === 0) return;
-
-      const file = event.target.files[0];
-      const fileExt = file.name.split('.').pop() || 'jpg';
-      const fileName = `mobile_capture_${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('inventory_photos')
-        .upload(fileName, file);
-
-      if (uploadError) throw uploadError;
-
-      const { data } = supabase.storage
-        .from('inventory_photos')
-        .getPublicUrl(fileName);
-
-      const { error: dbError } = await supabase
-        .from('IncomingPhotos')
-        .insert([{
-          photo_url: data.publicUrl,
-          uploaded_by: uid,
-          status: 'pending'
-        }]);
-
-      if (dbError) throw dbError;
-
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-    } catch (error: any) {
-      alert(`Upload failed: ${error.message}`);
-    } finally {
-      setUploading(false);
+      const ext  = file.name.split('.').pop() || 'jpg';
+      const name = `mobile_capture_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('inventory_photos').upload(name, file);
+      if (upErr) throw upErr;
+      const { data: { publicUrl } } = supabase.storage.from('inventory_photos').getPublicUrl(name);
+      const { data: types } = await supabase.from('ItemTypes').select('*').order('name');
+      if (types) setItemTypes(types);
+      setPhase({ phase: 'filling', photoUrl: publicUrl });
+    } catch (err: any) {
+      alert(err.message);
+      setPhase({ phase: 'idle' });
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   };
 
-  return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 sm:p-12 relative overflow-hidden">
-      <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/30 via-black to-blue-900/20 z-0"/>
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-indigo-500/20 rounded-full blur-3xl z-0 pointer-events-none"/>
+  const confirmType = async (name: string) => {
+    setTypeSearch(name); setTypeConfirmed(true); setShowDrop(false);
+    const existing = itemTypes.find(t => t.name.toLowerCase() === name.toLowerCase());
+    if (existing) {
+      const { data } = await supabase.from('ItemTypeAttributes').select('*').eq('item_type_id', existing.id);
+      setAvailableAttrs(data ?? []);
+    } else {
+      setAvailableAttrs([]);
+    }
+  };
 
-      <div className="z-10 w-full max-w-md flex flex-col items-center">
+  const toggleTag = (name: string) => {
+    const isParent = availableAttrs.find(t => t.name === name)?.is_parent ?? false;
+    if (selectedTags.includes(name)) {
+      setSelectedTags(p => p.filter(t => t !== name));
+    } else if (isParent) {
+      const parents = new Set(availableAttrs.filter(t => t.is_parent).map(t => t.name));
+      setSelectedTags(p => [...p.filter(t => !parents.has(t)), name]);
+    } else {
+      setSelectedTags(p => [...p, name]);
+    }
+  };
 
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-white tracking-tight mb-2">Inventory Camera</h1>
-          <p className="text-indigo-200/70 text-sm">Snap a photo to instantly beam it to the triage dashboard.</p>
-        </div>
+  const handleToggleSplit = () => {
+    if (!isSplit) {
+      setSplitQty({
+        Excellent: quality === 'Excellent' ? qty : 0,
+        Good:      quality === 'Good'      ? qty : 0,
+        Fair:      quality === 'Fair'      ? qty : 0,
+        Poor:      quality === 'Poor'      ? qty : 0,
+      });
+    }
+    setIsSplit(p => !p);
+  };
 
-        <div className="relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full blur opacity-50 group-hover:opacity-100 transition duration-500"/>
+  const submit = async (withSuggestions: boolean) => {
+    const photoUrl = (phase as { photoUrl: string }).photoUrl;
+    setPhase({ phase: 'submitting', photoUrl });
+    try {
+      const row: Record<string, any> = { photo_url: photoUrl, uploaded_by: uid, status: 'pending' };
+      if (withSuggestions && typeSearch.trim()) {
+        row.suggestion_type_name = typeSearch.trim();
+        if (selectedTags.length > 0) row.suggestion_attributes = selectedTags;
+        row.suggestion_quality = quality;
+        if (isSplit) {
+          row.suggestion_qty_excellent = splitQty.Excellent;
+          row.suggestion_qty_good      = splitQty.Good;
+          row.suggestion_qty_fair      = splitQty.Fair;
+          row.suggestion_qty_poor      = splitQty.Poor;
+          row.suggestion_quantity = Object.values(splitQty).reduce((a, b) => a + b, 0);
+        } else {
+          row.suggestion_quantity = qty;
+        }
+        if (notes.trim()) row.suggestion_notes = notes.trim();
+      }
+      const { error } = await supabase.from('IncomingPhotos').insert([row]);
+      if (error) throw error;
+      setPhase({ phase: 'success' });
+    } catch (err: any) {
+      alert(err.message);
+      setPhase({ phase: 'filling', photoUrl });
+    }
+  };
 
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className={`relative flex items-center justify-center w-40 h-40 sm:w-56 sm:h-56 rounded-full shadow-2xl transition-all duration-300 ${
-              uploading ? 'bg-indigo-900 scale-95 border-4 border-indigo-700' : 'bg-gradient-to-br from-indigo-500 to-blue-600 hover:scale-105 active:scale-95 border-4 border-white/20'
-            }`}
-          >
-            {uploading ? (
-              <div className="flex flex-col items-center text-white">
-                <Loader2 className="w-12 h-12 sm:w-16 sm:h-16 animate-spin mb-3 opacity-90" />
-                <span className="font-semibold text-sm sm:text-base tracking-wide uppercase">Sending...</span>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center text-white">
-                <Camera aria-hidden className="w-14 h-14 sm:w-20 sm:h-20 mb-3 drop-shadow-md" />
-                <span className="font-bold tracking-widest text-sm sm:text-lg uppercase drop-shadow-sm">Capture</span>
-              </div>
-            )}
-          </button>
-        </div>
+  const filtered   = itemTypes.filter(t => t.name.toLowerCase().includes(typeSearch.toLowerCase()));
+  const parents    = availableAttrs.filter(t => t.is_parent);
+  const tagAttrs   = availableAttrs.filter(t => !t.is_parent);
+  const busy       = phase.phase === 'submitting';
+  const photoUrl   = (phase as any).photoUrl as string | undefined;
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={handleCapture}
-          className="hidden"
+  // ─────────────────────────────────────────────────────────────────────────
+  // IDLE
+  // ─────────────────────────────────────────────────────────────────────────
+  if (phase.phase === 'idle') {
+    return (
+      <div className="h-[100dvh] bg-black flex flex-col items-center justify-center font-mono relative overflow-hidden select-none">
+        {/* Dot grid background */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.035]"
+          style={{
+            backgroundImage: 'radial-gradient(circle, #94a3b8 1px, transparent 1px)',
+            backgroundSize: '28px 28px',
+          }}
         />
+        <div className="relative z-10 flex flex-col items-center gap-10 px-8 w-full max-w-xs">
+          <div className="text-center space-y-1.5">
+            <p className="text-[7px] tracking-[0.4em] uppercase text-slate-700">FFE Inventory System</p>
+            <p className="text-[11px] tracking-[0.22em] uppercase text-slate-300">Field Capture</p>
+          </div>
 
-        <div className={`mt-10 flex items-center gap-2 px-6 py-3 rounded-2xl bg-green-500/20 border border-green-500/30 text-green-400 font-medium transition-all duration-500 ${success ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}>
-          <CheckCircle2 size={24} />
-          <span>Upload Successful! Ready for next.</span>
-        </div>
+          {/* Capture button with corner bracket decoration */}
+          <div className="relative w-full">
+            <Brackets color="border-slate-700" />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full border border-slate-800 bg-slate-950 active:bg-slate-900 transition-colors flex flex-col items-center gap-4 py-10"
+            >
+              <Camera size={30} strokeWidth={1} className="text-slate-500" />
+              <span className="text-[10px] tracking-[0.3em] uppercase text-slate-400">Capture</span>
+            </button>
+          </div>
 
-        <div className="absolute bottom-8 text-white/30 text-xs flex items-center gap-2">
-          <RefreshCcw size={12} />
-          Synced securely via Supabase Realtime
+          <p className="text-[7px] tracking-[0.18em] uppercase text-slate-800 text-center">
+            Synced to triage via Supabase Realtime
+          </p>
         </div>
+        <input ref={fileInputRef} type="file" accept="image/*" capture="environment" onChange={handleCapture} className="hidden" />
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // UPLOADING
+  // ─────────────────────────────────────────────────────────────────────────
+  if (phase.phase === 'uploading') {
+    return (
+      <div className="h-[100dvh] bg-black flex flex-col items-center justify-center font-mono gap-4">
+        <Loader2 size={22} strokeWidth={1.5} className="text-blue-600 animate-spin" />
+        <p className="text-[8px] tracking-[0.28em] uppercase text-slate-600">Uploading…</p>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // SUCCESS
+  // ─────────────────────────────────────────────────────────────────────────
+  if (phase.phase === 'success') {
+    return (
+      <div className="h-[100dvh] bg-black flex flex-col items-center justify-center font-mono gap-8">
+        <div className="relative">
+          <Brackets color="border-emerald-800" />
+          <div className="border border-emerald-900/60 bg-emerald-950/20 px-10 py-6 flex flex-col items-center gap-3">
+            <CheckCircle2 size={26} strokeWidth={1.5} className="text-emerald-500" />
+            <p className="text-[9px] tracking-[0.3em] uppercase text-emerald-400">Transmitted</p>
+          </div>
+        </div>
+        <p className="text-[7px] tracking-[0.18em] uppercase text-slate-700 text-center">
+          Photo queued for triage review
+        </p>
+        <button
+          onClick={() => { reset(); setPhase({ phase: 'idle' }); }}
+          className="border border-slate-800 px-8 py-3 text-[9px] tracking-[0.22em] uppercase text-slate-500 active:bg-slate-900 transition-colors"
+        >
+          Capture Another
+        </button>
+      </div>
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // FILLING / SUBMITTING  (2-step form, fixed viewport, no page scroll)
+  // ─────────────────────────────────────────────────────────────────────────
+  return (
+    <div className="h-[100dvh] bg-black flex flex-col font-mono overflow-hidden">
+
+      {/* ── Photo strip — taller on step 2 to absorb the extra space ─────── */}
+      <div className={`shrink-0 relative border-b border-slate-900 h-[20dvh]`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={photoUrl} alt="" className="w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/80" />
+        <p className="absolute bottom-1.5 left-3 text-[7px] tracking-[0.25em] uppercase text-slate-500">
+          Field Photo
+        </p>
+      </div>
+
+      {/* ── Step indicator ──────────────────────────────────────────────── */}
+      <div className="shrink-0 flex items-center gap-0 border-b border-slate-900">
+        {([1, 2] as const).map((s, i) => {
+          const active   = formStep === s;
+          const complete = formStep > s;
+          const label    = s === 1 ? 'Identify' : 'Quantify';
+          return (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setFormStep(s)}
+              className={`flex-1 flex items-center gap-2 px-3 py-2.5 transition-colors ${
+                i > 0 ? 'border-l border-slate-900' : ''
+              } ${active ? 'bg-slate-950' : 'active:bg-slate-950'}`}
+            >
+              <div className={`w-[18px] h-[18px] shrink-0 border flex items-center justify-center text-[7px] transition-colors ${
+                active   ? 'border-blue-700 bg-blue-950/60 text-blue-400' :
+                complete ? 'border-slate-700 bg-slate-900 text-slate-500' :
+                           'border-slate-800 text-slate-700'
+              }`}>
+                {complete ? <Check size={8} strokeWidth={2.5} /> : s}
+              </div>
+              <span className={`text-[8px] tracking-[0.2em] uppercase transition-colors ${
+                active ? 'text-slate-300' : 'text-slate-700'
+              }`}>
+                {label}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* ── Step content ────────────────────────────────────────────────── */}
+      <div className="flex-1 min-h-0 overflow-hidden">
+
+        {/* STEP 1 — Type + Attributes */}
+        {formStep === 1 && (
+          <div className="h-full flex flex-col px-4 pt-4 overflow-hidden">
+
+            {/* Type input row */}
+            <div className="shrink-0 mb-4">
+              <FieldLabel>Item Type</FieldLabel>
+              <div className="flex gap-0 relative">
+                <input
+                  value={typeSearch}
+                  onChange={e => {
+                    setTypeSearch(e.target.value);
+                    setTypeConfirmed(false);
+                    setAvailableAttrs([]);
+                    setSelectedTags([]);
+                    setShowDrop(true);
+                  }}
+                  onFocus={() => { if (typeSearch) setShowDrop(true); }}
+                  onBlur={() => setTimeout(() => setShowDrop(false), 200)}
+                  placeholder="Chair, Desk, Monitor…"
+                  className="flex-1 h-11 border border-slate-800 border-r-0 bg-slate-950 px-3 text-[11px] text-slate-200 placeholder:text-slate-700 outline-none focus:border-blue-800 transition-colors"
+                />
+                <button
+                  type="button"
+                  onMouseDown={() => { if (typeSearch.trim()) confirmType(typeSearch.trim()); }}
+                  className="w-11 h-11 border border-slate-800 bg-slate-950 flex items-center justify-center text-slate-600 hover:border-blue-800 hover:text-blue-500 active:bg-slate-900 transition-colors shrink-0"
+                >
+                  <ChevronRight size={14} strokeWidth={1.5} />
+                </button>
+
+                {/* Autocomplete dropdown */}
+                {showDrop && typeSearch && (
+                  <div className="absolute z-30 top-full left-0 right-0 border border-slate-800 border-t-0 bg-black max-h-40 overflow-y-auto shadow-xl shadow-black/60">
+                    {filtered.map(t => (
+                      <button
+                        key={t.id}
+                        type="button"
+                        onMouseDown={() => confirmType(t.name)}
+                        className="w-full text-left px-3 py-2.5 text-[11px] text-slate-400 hover:bg-slate-950 border-b border-slate-900 last:border-0 transition-colors"
+                      >
+                        {t.name}
+                      </button>
+                    ))}
+                    {!filtered.find(t => t.name.toLowerCase() === typeSearch.toLowerCase()) && (
+                      <button
+                        type="button"
+                        onMouseDown={() => confirmType(typeSearch)}
+                        className="w-full text-left px-3 py-2.5 text-[11px] text-blue-600/80 hover:bg-slate-950 transition-colors"
+                      >
+                        Use &ldquo;{typeSearch}&rdquo;
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Confirmed badge */}
+              {typeConfirmed && (
+                <p className="mt-1.5 text-[7px] tracking-[0.2em] uppercase text-slate-600 flex items-center gap-1">
+                  <Check size={7} className="text-blue-700" /> Type confirmed
+                </p>
+              )}
+            </div>
+
+            {/* Attributes — fills remaining height, scrolls internally if needed */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              {!typeConfirmed ? (
+                <p className="text-[8px] tracking-[0.15em] uppercase text-slate-800 italic">
+                  Confirm type to see attributes
+                </p>
+              ) : availableAttrs.length === 0 ? (
+                <p className="text-[8px] tracking-[0.15em] uppercase text-slate-700 italic">
+                  No attributes defined for this type
+                </p>
+              ) : (
+                <div className="space-y-4 pb-2">
+                  {/* Group (parent) — radio */}
+                  {parents.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <FieldLabel>Group</FieldLabel>
+                        <p className="font-mono text-[7px] tracking-wide text-slate-700 mb-2">— pick one</p>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {parents.map(tag => {
+                          const sel = selectedTags.includes(tag.name);
+                          return (
+                            <button
+                              key={tag.id ?? tag.name}
+                              type="button"
+                              onClick={() => toggleTag(tag.name)}
+                              className={`min-h-[40px] px-3 border text-[10px] tracking-wide transition-colors ${
+                                sel
+                                  ? 'border-amber-700 bg-amber-950/50 text-amber-400'
+                                  : 'border-slate-800 bg-slate-950 text-slate-500 active:bg-slate-900'
+                              }`}
+                            >
+                              {sel && <Check size={8} strokeWidth={2.5} className="inline mr-1" />}
+                              {tag.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tags (child) — multi-select */}
+                  {tagAttrs.length > 0 && (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <FieldLabel>Tags</FieldLabel>
+                        <p className="font-mono text-[7px] tracking-wide text-slate-700 mb-2">— pick any</p>
+                      </div>
+                      {tagAttrs.length > 5 && (
+                        <input
+                          value={tagFilter}
+                          onChange={e => setTagFilter(e.target.value)}
+                          placeholder="Filter tags…"
+                          className="w-full h-8 mb-2 border border-slate-800 bg-slate-950 px-2 text-[10px] text-slate-300 placeholder:text-slate-700 outline-none focus:border-blue-800 transition-colors"
+                        />
+                      )}
+                      <div className="flex flex-wrap gap-1.5">
+                        {tagAttrs.filter(t => !tagFilter || t.name.toLowerCase().includes(tagFilter.toLowerCase())).map(tag => {
+                          const sel = selectedTags.includes(tag.name);
+                          return (
+                            <button
+                              key={tag.id ?? tag.name}
+                              type="button"
+                              onClick={() => toggleTag(tag.name)}
+                              className={`min-h-[40px] px-3 border text-[10px] tracking-wide transition-colors ${
+                                sel
+                                  ? 'border-blue-700 bg-blue-950/50 text-blue-400'
+                                  : 'border-slate-800 bg-slate-950 text-slate-500 active:bg-slate-900'
+                              }`}
+                            >
+                              {sel && <Check size={8} strokeWidth={2.5} className="inline mr-1" />}
+                              {tag.name}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2 — Quantity + Condition + Notes */}
+        {formStep === 2 && (
+          <div className="h-full flex flex-col px-4 pt-4 gap-4 overflow-hidden">
+
+            {/* Quantity stepper */}
+            <div className="shrink-0">
+              <FieldLabel>Quantity</FieldLabel>
+              <div className="flex items-stretch gap-0 w-fit">
+                <button
+                  type="button"
+                  onClick={() => setQty(q => Math.max(1, q - 1))}
+                  className="w-10 h-10 border border-slate-800 border-r-0 bg-slate-950 flex items-center justify-center text-slate-600 active:bg-slate-900 transition-colors"
+                >
+                  <Minus size={11} strokeWidth={2} />
+                </button>
+                <input
+                  type="number"
+                  min="1"
+                  value={qty || ''}
+                  onChange={e => setQty(parseInt(e.target.value) || 1)}
+                  className="w-14 h-10 border border-slate-800 bg-slate-950 text-center text-[14px] font-semibold text-slate-200 outline-none focus:border-blue-800 transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={() => setQty(q => q + 1)}
+                  className="w-10 h-10 border border-slate-800 border-l-0 bg-slate-950 flex items-center justify-center text-slate-600 active:bg-slate-900 transition-colors"
+                >
+                  <Plus size={11} strokeWidth={2} />
+                </button>
+              </div>
+            </div>
+
+            {/* Condition */}
+            <div className="shrink-0">
+              <div className="flex items-center justify-between mb-2">
+                <FieldLabel>Condition</FieldLabel>
+                <button
+                  type="button"
+                  onClick={handleToggleSplit}
+                  className={`flex items-center gap-1.5 h-6 px-2.5 border text-[7px] tracking-[0.18em] uppercase transition-colors ${
+                    isSplit
+                      ? 'border-blue-800 bg-blue-950/40 text-blue-500'
+                      : 'border-slate-800 text-slate-600 active:bg-slate-900'
+                  }`}
+                >
+                  <span className={`w-1.5 h-1.5 border transition-colors ${isSplit ? 'bg-blue-500 border-blue-500' : 'border-slate-600'}`} />
+                  Split
+                </button>
+              </div>
+
+              {!isSplit ? (
+                /* Single quality — 4 chips in a row */
+                <div className="grid grid-cols-4 gap-1">
+                  {(Object.keys(Q) as QualityKey[]).map(q => {
+                    const sel = quality === q;
+                    return (
+                      <button
+                        key={q}
+                        type="button"
+                        onClick={() => setQuality(q)}
+                        className={`h-10 border text-[8px] tracking-[0.08em] uppercase transition-colors ${
+                          sel
+                            ? `${Q[q].border} ${Q[q].activeBg} ${Q[q].text}`
+                            : 'border-slate-800 bg-slate-950 text-slate-600 active:bg-slate-900'
+                        }`}
+                      >
+                        {sel && '· '}{Q[q].short}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* Split mode — 4 number inputs */
+                <div className="grid grid-cols-4 gap-1">
+                  {(Object.keys(Q) as QualityKey[]).map(q => (
+                    <div key={q} className="border border-slate-800 bg-slate-950 p-1.5 flex flex-col items-center gap-1">
+                      <span className={`text-[7px] tracking-[0.12em] uppercase ${Q[q].text}`}>{Q[q].short}</span>
+                      <input
+                        type="number"
+                        min="0"
+                        value={splitQty[q]}
+                        onChange={e => setSplitQty(prev => ({ ...prev, [q]: parseInt(e.target.value) || 0 }))}
+                        className="w-full h-8 text-center text-[13px] font-semibold border border-slate-800 bg-slate-900 text-slate-200 outline-none focus:border-blue-800 transition-colors"
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Notes — fixed height, remaining space goes to photo strip */}
+            <div className="shrink-0">
+              <FieldLabel>Notes <span className="text-slate-800 normal-case tracking-normal font-sans">(optional)</span></FieldLabel>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                placeholder="Condition details, manufacturer, location notes…"
+                rows={3}
+                className="w-full h-[72px] border border-slate-800 bg-slate-950 px-3 py-2 text-[11px] text-slate-300 placeholder:text-slate-700 outline-none focus:border-blue-800 resize-none transition-colors"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Bottom nav ──────────────────────────────────────────────────── */}
+      <div className="shrink-0 border-t border-slate-900 flex h-14">
+        {formStep === 1 ? (
+          <>
+            {/* Skip — submits with zero suggestions */}
+            <button
+              type="button"
+              onClick={() => submit(false)}
+              disabled={busy}
+              className="flex-1 border-r border-slate-900 text-[8px] tracking-[0.22em] uppercase text-slate-600 active:bg-slate-950 transition-colors disabled:opacity-40"
+            >
+              {busy ? <Loader2 size={13} className="inline animate-spin" /> : 'Skip'}
+            </button>
+            {/* Next */}
+            <button
+              type="button"
+              onClick={() => setFormStep(2)}
+              className="flex-[2] text-[8px] tracking-[0.22em] uppercase text-slate-300 flex items-center justify-center gap-2 bg-slate-950 active:bg-slate-900 transition-colors"
+            >
+              Next <ChevronRight size={11} strokeWidth={2} />
+            </button>
+          </>
+        ) : (
+          <>
+            {/* Back */}
+            <button
+              type="button"
+              onClick={() => setFormStep(1)}
+              className="flex-1 border-r border-slate-900 text-[8px] tracking-[0.22em] uppercase text-slate-600 flex items-center justify-center gap-1.5 active:bg-slate-950 transition-colors"
+            >
+              <ChevronLeft size={11} strokeWidth={2} /> Back
+            </button>
+            {/* Submit with details */}
+            <button
+              type="button"
+              onClick={() => submit(true)}
+              disabled={busy}
+              className="flex-[2] bg-blue-950/50 border-l border-blue-900/40 text-[8px] tracking-[0.22em] uppercase text-blue-400 flex items-center justify-center gap-2 active:bg-blue-950/70 transition-colors disabled:opacity-40"
+            >
+              {busy
+                ? <Loader2 size={13} className="animate-spin" />
+                : <><Check size={11} strokeWidth={2.5} /> Submit</>
+              }
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
