@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
 // ─── Google OAuth icon ────────────────────────────────────────────────────────
@@ -167,6 +168,13 @@ function FloorPlanBg() {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 export default function LoginPage() {
+  // Redirect to app if already authenticated
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session) window.location.replace('/');
+    });
+  }, []);
+
   const handleGoogleSignIn = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',

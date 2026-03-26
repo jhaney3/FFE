@@ -28,7 +28,23 @@ function HomeInner() {
   const [inviteOpen, setInviteOpen] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
+    supabase.auth.getSession().then(({ data }) => {
+      if (!data.session) {
+        window.location.replace('/login');
+        return;
+      }
+      setUser(data.session.user);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || (!session && event !== 'INITIAL_SESSION')) {
+        window.location.replace('/login');
+      } else if (session) {
+        setUser(session.user);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleSignOut = () => {
