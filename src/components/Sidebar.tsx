@@ -93,11 +93,17 @@ export default function Sidebar() {
         .on(
           'postgres_changes',
           { event: 'INSERT', schema: 'public', table: 'IncomingPhotos', filter: `uploaded_by=eq.${uid}` },
-          (payload) => {
-            const photo = payload.new as any;
-            if (photo.status === 'pending') {
-              setPhotos(prev => [photo, ...prev]);
-            }
+          async (payload) => {
+            const stub = payload.new as any;
+            if (stub.status !== 'pending') return;
+            // Re-fetch the full row so suggestion_* columns are included
+            // (Realtime payload.new may omit columns added after publication setup)
+            const { data } = await supabase
+              .from('IncomingPhotos')
+              .select('*')
+              .eq('id', stub.id)
+              .single();
+            if (data) setPhotos(prev => [data, ...prev]);
           }
         )
         .on(
