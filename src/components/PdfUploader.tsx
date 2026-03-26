@@ -3,8 +3,10 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { Upload, FileUp, Loader2 } from 'lucide-react';
+import { useProjectId } from '@/lib/ProjectContext';
 
 export default function PdfUploader({ onUploaded }: { onUploaded: () => void }) {
+  const projectId = useProjectId();
   const [uploading, setUploading] = useState(false);
 
   const uploadPdf = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,7 +34,7 @@ export default function PdfUploader({ onUploaded }: { onUploaded: () => void }) 
 
       const { error: dbError } = await supabase
         .from('FloorPlans')
-        .insert([{ name: planName, image_url: data.publicUrl }]);
+        .insert([{ name: planName, image_url: data.publicUrl, project_id: projectId }]);
 
       if (dbError) throw dbError;
 

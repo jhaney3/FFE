@@ -11,10 +11,11 @@ import Dashboard from '@/components/Dashboard';
 import FormModal from '@/components/FormModal';
 import AssetDropModal from '@/components/AssetDropModal';
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
-import { LayoutGrid, Map as MapIcon, Database, LogOut, WifiOff } from 'lucide-react';
+import { LayoutGrid, Map as MapIcon, Database, LogOut, WifiOff, UserPlus } from 'lucide-react';
 import { BandwidthProvider, useLowBandwidth } from '@/lib/BandwidthContext';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
+import InviteModal from '@/components/InviteModal';
 
 function HomeInner() {
   const [activeTab, setActiveTab] = useState<'map' | 'list'>('map');
@@ -24,14 +25,15 @@ function HomeInner() {
   const [assetDropState, setAssetDropState] = useState<{ asset: any, room: any } | null>(null);
   const [itemsVersion, setItemsVersion] = useState(0);
   const [user, setUser] = useState<User | null>(null);
+  const [inviteOpen, setInviteOpen] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, []);
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    window.location.href = '/login';
+  const handleSignOut = () => {
+    supabase.auth.signOut().catch(() => {});
+    window.location.replace('/login');
   };
 
   const sensors = useSensors(
@@ -122,6 +124,14 @@ function HomeInner() {
           {user && (
             <span className="font-mono text-[10px] text-gray-500 hidden md:inline tracking-wide">{user.user_metadata?.full_name || user.email}</span>
           )}
+          <button
+            onClick={() => setInviteOpen(true)}
+            title="Invite team member"
+            className="flex items-center gap-1.5 px-2.5 py-1 border border-gray-800 text-gray-600 hover:text-blue-400 hover:border-blue-800 transition-colors font-mono text-[9px] tracking-wider uppercase"
+          >
+            <UserPlus size={11} />
+            <span className="hidden md:inline">Invite</span>
+          </button>
           <BandwidthToggle />
           <button
             onClick={handleSignOut}
@@ -188,9 +198,10 @@ function HomeInner() {
           room={assetDropState.room}
           onClose={() => setAssetDropState(null)}
           onSaved={() => setItemsVersion(v => v + 1)}
-
         />
       )}
+
+      {inviteOpen && <InviteModal onClose={() => setInviteOpen(false)} />}
     </div>
   );
 }

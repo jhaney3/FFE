@@ -4,17 +4,20 @@ import { useState, useEffect } from 'react';
 import { QrCode, Smartphone, ChevronUp, ChevronDown } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { supabase } from '@/lib/supabase';
+import { useProjectId } from '@/lib/ProjectContext';
 
 export default function PhotoUploader() {
   const [cameraUrl, setCameraUrl] = useState('');
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const projectId = useProjectId();
 
   useEffect(() => {
+    if (!projectId) return;
     supabase.auth.getUser().then(({ data }) => {
       const uid = data.user?.id ?? 'unknown';
-      setCameraUrl(`${window.location.origin}/camera?uid=${uid}`);
+      setCameraUrl(`${window.location.origin}/camera?uid=${uid}&pid=${projectId}`);
     });
-  }, []);
+  }, [projectId]);
 
   return (
     <div className="border-b border-gray-800 flex flex-col items-center">

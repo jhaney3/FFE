@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { X, ChevronDown, Check, AlertTriangle, Tag, Layers, ShieldCheck, Package } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { saveAssetIfNew } from '@/lib/saveAsset';
+import { useProjectId } from '@/lib/ProjectContext';
 
 function Section({ title, enabled, onToggle, icon, children }: {
   title: string;
@@ -38,6 +39,7 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const projectId = useProjectId();
   const [step, setStep] = useState<'edit' | 'confirm' | 'pick-photo' | 'asset-exists'>('edit');
   const [loading, setLoading] = useState(false);
 
@@ -153,7 +155,7 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
             resolvedTypeId = existing.id;
           } else {
             const { data: created } = await supabase
-              .from('ItemTypes').insert([{ name: typeSearch.trim() }]).select().single();
+              .from('ItemTypes').insert([{ name: typeSearch.trim(), project_id: projectId }]).select().single();
             resolvedTypeId = created?.id;
           }
         }
@@ -303,6 +305,7 @@ export default function MassEditModal({ selectedIds, selectedItems, allItems, on
         photo_url:    chosenItem?.photo_url ?? null,
         attributes:   postSaveAttrs,
         notes:        '',
+        project_id:   projectId!,
       });
 
       const assetPhotoUrl = result.assetPhotoUrl;

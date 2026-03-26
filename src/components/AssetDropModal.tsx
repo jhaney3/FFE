@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Package, Check, SplitSquareVertical, Info, ChevronDown } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useProjectId } from '@/lib/ProjectContext';
 
 export default function AssetDropModal({ asset, room, onClose, onSaved }: {
   asset: any;
@@ -10,6 +11,7 @@ export default function AssetDropModal({ asset, room, onClose, onSaved }: {
   onClose: () => void;
   onSaved?: () => void;
 }) {
+  const projectId = useProjectId();
   const qtyInputRef = useRef<HTMLInputElement>(null);
   const [qty, setQty] = useState(1);
   const [quality, setQuality] = useState('Good');
@@ -91,6 +93,7 @@ export default function AssetDropModal({ asset, room, onClose, onSaved }: {
         qty_poor:      isSplit ? splitQty.Poor      : (quality === 'Poor'      ? qty : 0),
         attributes:    asset.attributes || [],
         notes:         notes.trim(),
+        project_id:    projectId,
       }]);
       if (error) throw error;
       onSaved?.();

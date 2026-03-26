@@ -53,6 +53,7 @@ function Brackets({ color = 'border-slate-700' }: { color?: string }) {
 
 function CameraCapture() {
   const uid = useSearchParams().get('uid') ?? 'unknown';
+  const pid = useSearchParams().get('pid') ?? '';
   const [phase, setPhase] = useState<Phase>({ phase: 'idle' });
   const [formStep, setFormStep] = useState<1 | 2>(1);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -94,7 +95,7 @@ function CameraCapture() {
       const { error: upErr } = await supabase.storage.from('inventory_photos').upload(name, file);
       if (upErr) throw upErr;
       const { data: { publicUrl } } = supabase.storage.from('inventory_photos').getPublicUrl(name);
-      const { data: types } = await supabase.rpc('get_types_for_uid', { p_uid: uid });
+      const { data: types } = await supabase.rpc('get_types_for_project', { p_project_id: pid });
       if (types) setItemTypes(types);
       setPhase({ phase: 'filling', photoUrl: publicUrl });
     } catch (err: any) {
@@ -143,7 +144,7 @@ function CameraCapture() {
     const photoUrl = (phase as { photoUrl: string }).photoUrl;
     setPhase({ phase: 'submitting', photoUrl });
     try {
-      const row: Record<string, any> = { photo_url: photoUrl, uploaded_by: uid, status: 'pending' };
+      const row: Record<string, any> = { photo_url: photoUrl, uploaded_by: uid, status: 'pending', project_id: pid };
       if (withSuggestions && typeSearch.trim()) {
         row.suggestion_type_name = typeSearch.trim();
         if (selectedTags.length > 0) row.suggestion_attributes = selectedTags;

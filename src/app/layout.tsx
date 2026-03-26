@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { IBM_Plex_Sans, IBM_Plex_Mono } from 'next/font/google';
 import './globals.css';
+import { ProjectProvider } from '@/lib/ProjectContext';
 
 const ibmPlexSans = IBM_Plex_Sans({
   subsets: ['latin'],
@@ -27,7 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className={`${ibmPlexSans.className} h-screen overflow-hidden flex flex-col bg-gray-950 text-gray-100`}>
         {/* 2px top accent — signature corporate stripe */}
         <div className="h-[2px] w-full bg-blue-500 shrink-0" />
-        {children}
+        <ProjectProvider>{children}</ProjectProvider>
       </body>
     </html>
   );

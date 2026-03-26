@@ -11,10 +11,12 @@ import ItemTypeFilter from './ItemTypeFilter';
 import TagManagerModal from './TagManagerModal';
 import { Document, Page, pdfjs } from 'react-pdf';
 import { TransformWrapper, TransformComponent } from 'react-zoom-pan-pinch';
+import { useProjectId } from '@/lib/ProjectContext';
 
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
+  const projectId = useProjectId();
   const [floorPlans, setFloorPlans] = useState<any[]>([]);
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
   const [rooms, setRooms] = useState<any[]>([]);
@@ -173,7 +175,8 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
       level_name: zoneData.level_name,
       building_name: zoneData.building_name,
       room_type: zoneData.room_type,
-      map_coordinates: pendingZoneParams
+      map_coordinates: pendingZoneParams,
+      project_id: projectId,
     }]);
 
     if (!error) {

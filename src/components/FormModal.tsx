@@ -3,9 +3,11 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { saveAssetIfNew } from '@/lib/saveAsset';
+import { useProjectId } from '@/lib/ProjectContext';
 import { X, Check, Tag, ChevronDown, SplitSquareVertical, Info, Package } from 'lucide-react';
 
 export default function FormModal({ photo, room, onClose, onSaved }: { photo: any, room: any, onClose: () => void, onSaved?: () => void }) {
+  const projectId = useProjectId();
   const [loading, setLoading] = useState(false);
 
   // Auto-complete Types state
@@ -313,6 +315,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
         qty_poor: qtyPoor,
         attributes: selectedTags,
         notes: notes.trim(),
+        project_id: projectId,
       }]).select('id').single();
       if (invError) throw invError;
 
@@ -331,6 +334,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
           photo_url:    photo.photo_url,
           attributes:   selectedTags,
           notes:        notes.trim(),
+          project_id:   projectId!,
         });
         if (result.status === 'duplicate') {
           alert(`An asset for "${typeName}" with these attributes already exists.`);
@@ -376,7 +380,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
       } else {
         const { data: newType, error: typeError } = await supabase
           .from('ItemTypes')
-          .insert([{ name: typeName }])
+          .insert([{ name: typeName, project_id: projectId }])
           .select()
           .single();
         if (typeError) throw typeError;
@@ -767,6 +771,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
                               qty_poor:      qtyPoor,
                               attributes:    matchedAsset.attributes || [],
                               notes:         notes.trim(),
+                              project_id:    projectId,
                             }]);
                             if (error) throw error;
                             // Remove from triage queue via status update (triggers Sidebar realtime handler)

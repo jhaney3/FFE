@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabase';
 import { saveAssetIfNew } from '@/lib/saveAsset';
+import { useProjectId } from '@/lib/ProjectContext';
 import { X, Check, Tag, ChevronDown, SplitSquareVertical, Info, Package } from 'lucide-react';
 
 export default function EditItemModal({ item, onClose, onSaved }: {
@@ -11,6 +12,7 @@ export default function EditItemModal({ item, onClose, onSaved }: {
   onClose: () => void;
   onSaved: () => void;
 }) {
+  const projectId = useProjectId();
   const [loading, setLoading] = useState(false);
 
   // Auto-complete Types state
@@ -263,7 +265,7 @@ export default function EditItemModal({ item, onClose, onSaved }: {
       } else {
         const { data: newType, error: typeError } = await supabase
           .from('ItemTypes')
-          .insert([{ name: typeName }])
+          .insert([{ name: typeName, project_id: projectId }])
           .select()
           .single();
         if (typeError) throw typeError;
@@ -299,6 +301,7 @@ export default function EditItemModal({ item, onClose, onSaved }: {
           photo_url:    item.photo_url,
           attributes:   selectedTags,
           notes:        notes.trim(),
+          project_id:   projectId!,
         });
         if (result.status === 'duplicate') {
           alert(`An asset for "${typeName}" with these attributes already exists.`);

@@ -28,12 +28,14 @@ export async function saveAssetIfNew({
   photo_url,
   attributes,
   notes,
+  project_id,
 }: {
   name: string;
   item_type_id: string;
   photo_url?: string | null;
   attributes: string[];
   notes?: string;
+  project_id: string;
 }): Promise<{ status: 'saved'; assetPhotoUrl: string | null } | { status: 'duplicate'; assetPhotoUrl: null }> {
   const sorted = [...attributes].sort();
 
@@ -62,6 +64,7 @@ export async function saveAssetIfNew({
     photo_url: assetPhotoUrl,
     attributes: sorted,
     notes: notes || '',
+    project_id,
   }]);
 
   return { status: 'saved', assetPhotoUrl };
