@@ -23,8 +23,9 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // Refresh the session — this keeps the cookie up-to-date and clears it on sign-out
-  await supabase.auth.getUser();
+  // Refresh the session cookie — getSession() reads locally and only hits the
+  // network when the token is expired, keeping edge latency minimal.
+  await supabase.auth.getSession();
 
   return supabaseResponse;
 }
