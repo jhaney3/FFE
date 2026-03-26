@@ -13,8 +13,8 @@ export default function PhotoUploader() {
 
   useEffect(() => {
     if (!projectId) return;
-    supabase.auth.getUser().then(({ data }) => {
-      const uid = data.user?.id ?? 'unknown';
+    supabase.auth.getSession().then(({ data }) => {
+      const uid = data.session?.user?.id ?? 'unknown';
       setCameraUrl(`${window.location.origin}/camera?uid=${uid}&pid=${projectId}`);
     });
   }, [projectId]);

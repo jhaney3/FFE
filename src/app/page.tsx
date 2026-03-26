@@ -28,7 +28,7 @@ function HomeInner() {
   const [inviteOpen, setInviteOpen] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    supabase.auth.getSession().then(({ data }) => setUser(data.session?.user ?? null));
   }, []);
 
   const handleSignOut = () => {

@@ -82,8 +82,8 @@ export default function Sidebar() {
   };
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      const uid = data.user?.id;
+    supabase.auth.getSession().then(({ data }) => {
+      const uid = data.session?.user?.id;
       if (!uid) return;
       setUserId(uid);
       fetchPhotos(uid);
