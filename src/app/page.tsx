@@ -28,19 +28,11 @@ function HomeInner() {
   const [inviteOpen, setInviteOpen] = useState(false);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (!data.session) {
-        window.location.replace('/login');
-        return;
-      }
-      setUser(data.session.user);
-    });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_OUT' || (!session && event !== 'INITIAL_SESSION')) {
-        window.location.replace('/login');
-      } else if (session) {
+      if (session) {
         setUser(session.user);
+      } else if (event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
+        window.location.replace('/login');
       }
     });
 
