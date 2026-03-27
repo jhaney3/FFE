@@ -295,7 +295,7 @@ export default function Dashboard() {
                 placeholder="Search by type name..."
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="w-full pl-8 pr-4 py-1.5 bg-gray-950 border border-gray-800 outline-none focus:border-blue-600 focus:ring-1 ring-blue-600/30 text-xs font-mono text-gray-200 placeholder:text-gray-700 transition-colors"
+                className="w-full pl-8 pr-4 py-1.5 bg-gray-950 border border-gray-800 outline-none focus:border-blue-600 focus:ring-1 ring-blue-600/30 text-xs font-mono text-gray-200 placeholder:text-gray-500 transition-colors"
               />
             </div>
             <div>
@@ -410,7 +410,7 @@ export default function Dashboard() {
                           </div>
                         )}
                         {item.notes && (
-                          <div className="font-mono text-[10px] text-gray-600 mt-1.5 max-w-xs truncate" title={item.notes}>{item.notes}</div>
+                          <div className="font-mono text-[10px] text-gray-500 mt-1.5 max-w-xs truncate" title={item.notes}>{item.notes}</div>
                         )}
                       </td>
 
@@ -426,7 +426,7 @@ export default function Dashboard() {
 
                       {/* Location */}
                       <td className="px-4 py-3 min-w-[180px]">
-                        <div className="flex items-center gap-1 font-mono text-[10px] text-gray-600 mb-1 flex-wrap">
+                        <div className="flex items-center gap-1 font-mono text-[10px] text-gray-500 mb-1 flex-wrap">
                           {item.Rooms?.level_name && <span>{item.Rooms.level_name}</span>}
                           {item.Rooms?.level_name && item.Rooms?.building_name && <span className="text-gray-700">›</span>}
                           {item.Rooms?.building_name && <span>{item.Rooms.building_name}</span>}
@@ -440,7 +440,7 @@ export default function Dashboard() {
                       </td>
 
                       {/* Added */}
-                      <td className="px-4 py-3 font-mono text-[11px] text-gray-600 whitespace-nowrap">
+                      <td className="px-4 py-3 font-mono text-[11px] text-gray-500 whitespace-nowrap">
                         {new Date(item.created_at).toLocaleDateString()}
                       </td>
                     </tr>

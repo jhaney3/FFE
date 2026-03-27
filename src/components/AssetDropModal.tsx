@@ -160,7 +160,7 @@ export default function AssetDropModal({ asset, room, onClose, onSaved }: {
           <div className="border border-gray-800 bg-gray-950/50 p-4">
             <div className="flex items-end gap-3">
               <div className="w-1/3">
-                <label className="block font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500 mb-1.5">Quantity</label>
+                <label className="block font-mono text-[10px] tracking-[0.12em] uppercase text-gray-400 mb-1.5">Quantity</label>
                 <input
                   ref={qtyInputRef}
                   type="number" min="1"
@@ -172,7 +172,7 @@ export default function AssetDropModal({ asset, room, onClose, onSaved }: {
               </div>
               {!isSplit && (
                 <div className="flex-1">
-                  <label className="block font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500 mb-1.5">Condition</label>
+                  <label className="block font-mono text-[10px] tracking-[0.12em] uppercase text-gray-400 mb-1.5">Condition</label>
                   <div className="relative">
                     <button
                       type="button"
@@ -256,12 +256,12 @@ export default function AssetDropModal({ asset, room, onClose, onSaved }: {
           </div>
 
           <div>
-            <label className="block font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500 mb-1.5">Notes</label>
+            <label className="block font-mono text-[10px] tracking-[0.12em] uppercase text-gray-400 mb-1.5">Notes</label>
             <textarea
               value={notes} onChange={(e) => setNotes(e.target.value)}
               placeholder="Optional observations..."
               rows={2}
-              className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2 outline-none resize-none text-gray-100 text-sm placeholder:text-gray-700"
+              className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2 outline-none resize-none text-gray-100 text-sm placeholder:text-gray-500"
             />
           </div>
 

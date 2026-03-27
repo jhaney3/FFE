@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import RoomZone from '@/components/RoomZone';
 import PdfUploader from './PdfUploader';
 import NewZoneModal from './NewZoneModal';
-import { Layers, ShieldAlert, Trash2, ChevronLeft, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize, Package, Tag, SlidersHorizontal } from 'lucide-react';
+import { Layers, ShieldAlert, Trash2, ChevronLeft, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize, Package, Tag, SlidersHorizontal, MapPin, X } from 'lucide-react';
 import AssetSidebar from './AssetSidebar';
 import ItemTypeFilter from './ItemTypeFilter';
 import TagManagerModal from './TagManagerModal';
@@ -28,6 +28,9 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
   const [editingRoom, setEditingRoom] = useState<any | null>(null);
   const [assetSidebarOpen, setAssetSidebarOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [virtualRooms, setVirtualRooms] = useState<any[]>([]);
+  const [virtualRoomsOpen, setVirtualRoomsOpen] = useState(false);
+  const [placingRoom, setPlacingRoom] = useState<any | null>(null);
   const [spotlightOpen, setSpotlightOpen] = useState(false);
   const [activeSpotlightType, setActiveSpotlightType]           = useState<string | null>(null);
   const [activeSpotlightParent, setActiveSpotlightParent]       = useState<string | null>(null);
@@ -49,7 +52,19 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
 
   useEffect(() => {
     fetchFloorPlans();
+    fetchVirtualRooms();
   }, []);
+
+  const fetchVirtualRooms = async () => {
+    if (!projectId) return;
+    const { data } = await supabase
+      .from('Rooms')
+      .select('*')
+      .eq('project_id', projectId)
+      .is('floor_plan_id', null)
+      .order('name');
+    if (data) setVirtualRooms(data);
+  };
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -153,17 +168,40 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
 
   const handleMouseUp = async () => {
     if (!isAdminMode || !drawingZone) return;
-    
+
     const width = Math.abs(drawingZone.currentX - drawingZone.startX);
     const height = Math.abs(drawingZone.currentY - drawingZone.startY);
     const left = Math.min(drawingZone.startX, drawingZone.currentX);
     const top = Math.min(drawingZone.startY, drawingZone.currentY);
-    
+
     setDrawingZone(null);
-    
+
     if (width < 2 || height < 2) return; // Too small
-    
-    setPendingZoneParams({ x: left, y: top, width, height });
+
+    const coords = { x: left, y: top, width, height };
+
+    if (placingRoom) {
+      await handlePlaceVirtualRoom(coords);
+    } else {
+      setPendingZoneParams(coords);
+    }
+  };
+
+  const handlePlaceVirtualRoom = async (coords: { x: number; y: number; width: number; height: number }) => {
+    if (!placingRoom || !activePlanId) return;
+    const { error } = await supabase.from('Rooms').update({
+      floor_plan_id: activePlanId,
+      map_coordinates: coords,
+      page_number: pageNumber,
+    }).eq('id', placingRoom.id);
+    if (error) {
+      alert(error.message);
+      return;
+    }
+    setPlacingRoom(null);
+    setIsAdminMode(false);
+    fetchRooms(activePlanId);
+    fetchVirtualRooms();
   };
 
   const handleCreateZone = async (zoneData: any) => {
@@ -182,6 +220,7 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
     if (!error) {
       setPendingZoneParams(null);
       fetchRooms(activePlanId!);
+      fetchVirtualRooms();
     } else {
       alert(error.message);
     }
@@ -279,6 +318,71 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
           >
             {({ zoomIn, zoomOut, resetTransform }) => (
               <>
+                {/* Placement mode banner */}
+                {placingRoom && (
+                  <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-3 px-4 py-2 bg-amber-900/80 border border-amber-600 backdrop-blur-sm surface-raised">
+                    <MapPin size={12} className="text-amber-400 shrink-0" />
+                    <span className="font-mono text-[10px] tracking-wider uppercase text-amber-300">
+                      Draw a zone to place <span className="text-amber-100 font-semibold">{placingRoom.name}</span>
+                    </span>
+                    <button
+                      onClick={() => { setPlacingRoom(null); setIsAdminMode(false); }}
+                      className="text-amber-500 hover:text-amber-200 transition-colors ml-1"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                )}
+
+                {/* Unplaced rooms badge */}
+                {virtualRooms.length > 0 && (
+                  <div className="absolute top-5 left-5 z-20">
+                    <button
+                      onClick={() => setVirtualRoomsOpen(o => !o)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 font-mono text-[10px] tracking-wider uppercase border transition-colors surface-raised ${
+                        virtualRoomsOpen
+                          ? 'bg-amber-500/15 text-amber-400 border-amber-500'
+                          : 'bg-gray-900 text-amber-500/80 border-amber-800/60 hover:border-amber-600 hover:text-amber-400'
+                      }`}
+                    >
+                      <MapPin size={11} />
+                      {virtualRooms.length} unplaced
+                    </button>
+
+                    {virtualRoomsOpen && (
+                      <div className="absolute top-full left-0 mt-1.5 w-64 bg-gray-900 border border-gray-700 surface-raised overflow-hidden">
+                        <div className="px-3 py-2 border-b border-gray-800">
+                          <p className="font-mono text-[9px] tracking-[0.15em] uppercase text-gray-400">Rooms not yet on the map</p>
+                        </div>
+                        <div className="max-h-60 overflow-y-auto custom-scrollbar">
+                          {virtualRooms.map(room => (
+                            <div key={room.id} className="flex items-center justify-between px-3 py-2 border-b border-gray-800 last:border-0 hover:bg-gray-800/50 transition-colors">
+                              <div className="min-w-0">
+                                <p className="text-sm text-gray-200 truncate">{room.name}</p>
+                                {(room.building_name || room.level_name) && (
+                                  <p className="font-mono text-[9px] text-gray-500 truncate">
+                                    {[room.building_name, room.level_name].filter(Boolean).join(' · ')}
+                                  </p>
+                                )}
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setPlacingRoom(room);
+                                  setIsAdminMode(true);
+                                  setVirtualRoomsOpen(false);
+                                }}
+                                className="shrink-0 ml-3 flex items-center gap-1 px-2 py-1 font-mono text-[9px] tracking-wider uppercase border border-amber-800 text-amber-500 hover:border-amber-600 hover:text-amber-300 transition-colors"
+                              >
+                                <MapPin size={9} /> Place
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* Zoom controls */}
                 <div className="absolute top-5 right-5 flex flex-col z-20 bg-gray-900 border border-gray-700 surface-raised overflow-hidden">
                   <button onClick={() => zoomIn()} className="p-2.5 text-gray-400 hover:bg-gray-800 hover:text-gray-200 border-b border-gray-700 transition-colors"><ZoomIn size={16}/></button>

@@ -100,7 +100,7 @@ export default function InviteModal({ onClose }: { onClose: () => void }) {
               {/* Expiry notice */}
               <div className="flex items-center gap-1.5 mt-2">
                 <Clock size={9} className="text-gray-700" />
-                <span className="font-mono text-[9px] text-gray-700">
+                <span className="font-mono text-[9px] text-gray-500">
                   Expires in 7 days · single use
                 </span>
               </div>

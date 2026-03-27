@@ -34,7 +34,7 @@ function AssetCard({ asset, onDelete, tagMeta }: { asset: any; onDelete: (id: st
           // eslint-disable-next-line @next/next/no-img-element
           <img src={asset.photo_url} alt={asset.name} className="w-full h-full object-cover pointer-events-none" loading="lazy" />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-700">
+          <div className="w-full h-full flex items-center justify-center text-gray-600">
             <Package size={20} />
           </div>
         )}
@@ -172,19 +172,19 @@ export default function AssetSidebar({ onClose }: { onClose: () => void }) {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search assets..."
-            className="w-full pl-7 pr-3 py-1.5 font-mono text-[11px] bg-gray-950 border border-gray-700 focus:border-blue-500 outline-none transition-colors text-gray-100 placeholder:text-gray-700"
+            className="w-full pl-7 pr-3 py-1.5 font-mono text-[11px] bg-gray-950 border border-gray-700 focus:border-blue-500 outline-none transition-colors text-gray-100 placeholder:text-gray-500"
           />
         </div>
       </div>
 
-      <p className="px-3 py-1.5 font-mono text-[9px] tracking-wider text-gray-700 uppercase shrink-0">Drag onto a zone to assign</p>
+      <p className="px-3 py-1.5 font-mono text-[9px] tracking-wider text-gray-500 uppercase shrink-0">Drag onto a zone to assign</p>
 
       {/* Grid */}
       <div className="flex-1 overflow-y-auto px-3 pb-3 custom-scrollbar">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 gap-2">
             <Package size={22} className="text-gray-800" />
-            <p className="font-mono text-[10px] text-gray-700 text-center leading-relaxed tracking-wider uppercase">
+            <p className="font-mono text-[10px] text-gray-500 text-center leading-relaxed tracking-wider uppercase">
               {assets.length === 0 ? 'No assets yet' : 'No matches'}
             </p>
           </div>

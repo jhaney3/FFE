@@ -6,7 +6,7 @@ import { saveAssetIfNew } from '@/lib/saveAsset';
 import { useProjectId } from '@/lib/ProjectContext';
 import { X, Check, Tag, ChevronDown, SplitSquareVertical, Info, Package } from 'lucide-react';
 
-export default function FormModal({ photo, room, onClose, onSaved }: { photo: any, room: any, onClose: () => void, onSaved?: () => void }) {
+export default function FormModal({ photo, room, onClose, onSaved }: { photo: any | null, room: any, onClose: () => void, onSaved?: () => void }) {
   const projectId = useProjectId();
   const [loading, setLoading] = useState(false);
 
@@ -48,7 +48,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
 
   useEffect(() => {
     fetchTypes();
-    if (!photo.suggestion_type_name) {
+    if (!photo?.suggestion_type_name) {
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           if (typeInputRef.current) typeInputRef.current.focus();
@@ -95,7 +95,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
       const match = assets?.find(a =>
         JSON.stringify([...(a.attributes || [])].sort()) === JSON.stringify(sorted)
       );
-      if (match && match.photo_url !== photo.photo_url) {
+      if (match && match.photo_url !== photo?.photo_url) {
         setPendingTypeId(existingType.id);
         setMatchedAsset(match);
       }
@@ -108,25 +108,25 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
   useEffect(() => {
     if (suggestionApplied) return;
     // Only wait for itemTypes when there's a type to apply; qty/quality/notes don't need them
-    if (photo.suggestion_type_name && itemTypes.length === 0) return;
+    if (photo?.suggestion_type_name && itemTypes.length === 0) return;
     // Nothing to apply if no suggestion fields are set
-    const hasAnySuggestion = photo.suggestion_type_name || photo.suggestion_quantity != null || photo.suggestion_quality || photo.suggestion_notes;
+    const hasAnySuggestion = photo?.suggestion_type_name || photo?.suggestion_quantity != null || photo?.suggestion_quality || photo?.suggestion_notes;
     if (!hasAnySuggestion) return;
 
     setSuggestionApplied(true);
-    if (photo.suggestion_type_name) {
+    if (photo?.suggestion_type_name) {
       setTypeSearch(photo.suggestion_type_name); // triggers existing [typeSearch] effect → fetchTagsForType
     }
 
-    const hasSplit = [photo.suggestion_qty_excellent, photo.suggestion_qty_good,
-                      photo.suggestion_qty_fair, photo.suggestion_qty_poor]
+    const hasSplit = [photo?.suggestion_qty_excellent, photo?.suggestion_qty_good,
+                      photo?.suggestion_qty_fair, photo?.suggestion_qty_poor]
       .some((v: any) => v != null);
 
     if (hasSplit) {
-      const ex = photo.suggestion_qty_excellent ?? 0;
-      const go = photo.suggestion_qty_good      ?? 0;
-      const fa = photo.suggestion_qty_fair      ?? 0;
-      const po = photo.suggestion_qty_poor      ?? 0;
+      const ex = photo?.suggestion_qty_excellent ?? 0;
+      const go = photo?.suggestion_qty_good      ?? 0;
+      const fa = photo?.suggestion_qty_fair      ?? 0;
+      const po = photo?.suggestion_qty_poor      ?? 0;
       setTotalQuantity(ex + go + fa + po || 1);
       setSplitQty({ Excellent: ex, Good: go, Fair: fa, Poor: po });
       const primary = (Object.entries({ Excellent: ex, Good: go, Fair: fa, Poor: po }) as [string, number][])
@@ -134,21 +134,21 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
       setGlobalQuality(primary);
       setIsSplit(true);
     } else {
-      if (photo.suggestion_quantity) setTotalQuantity(photo.suggestion_quantity);
-      if (photo.suggestion_quality) setGlobalQuality(photo.suggestion_quality);
+      if (photo?.suggestion_quantity) setTotalQuantity(photo.suggestion_quantity);
+      if (photo?.suggestion_quality) setGlobalQuality(photo.suggestion_quality);
     }
 
-    if (photo.suggestion_notes) setNotes(photo.suggestion_notes);
+    if (photo?.suggestion_notes) setNotes(photo.suggestion_notes);
   }, [itemTypes, suggestionApplied]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Effect B — apply suggested attributes once availableTags loads (chained from Effect A → fetchTagsForType)
   useEffect(() => {
     if (!suggestionApplied) return;
-    if (!photo.suggestion_attributes?.length) return;
+    if (!photo?.suggestion_attributes?.length) return;
     if (availableTags.length === 0) return;
 
     const validNames = new Set(availableTags.map((t: any) => t.name));
-    const valid = (photo.suggestion_attributes as string[]).filter((a: string) => validNames.has(a));
+    const valid = (photo?.suggestion_attributes as string[]).filter((a: string) => validNames.has(a));
     if (valid.length > 0) setSelectedTags(valid);
   }, [availableTags, suggestionApplied]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -314,7 +314,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
 
       const { data: invData, error: invError } = await supabase.from('InventoryItems').insert([{
         room_id: room.id,
-        photo_url: photo.photo_url,
+        photo_url: photo?.photo_url ?? null,
         item_type_id: itemTypeId,
         qty_excellent: qtyExcellent,
         qty_good: qtyGood,
@@ -327,25 +327,27 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
       if (invError) throw invError;
 
       // 3. Update Photo Status
-      const { error: photoError } = await supabase
-        .from('IncomingPhotos')
-        .update({ status: 'processed' })
-        .eq('id', photo.id);
-      if (photoError) throw photoError;
+      if (photo?.id) {
+        const { error: photoError } = await supabase
+          .from('IncomingPhotos')
+          .update({ status: 'processed' })
+          .eq('id', photo.id);
+        if (photoError) throw photoError;
+      }
 
       // 4. Optionally save as a reusable asset
       if (saveAsAsset) {
         const result = await saveAssetIfNew({
           name:         typeName,
           item_type_id: itemTypeId,
-          photo_url:    photo.photo_url,
+          photo_url:    photo?.photo_url,
           attributes:   selectedTags,
           notes:        notes.trim(),
           project_id:   projectId!,
         });
         if (result.status === 'duplicate') {
           alert(`An asset for "${typeName}" with these attributes already exists.`);
-        } else if (result.assetPhotoUrl && result.assetPhotoUrl !== photo.photo_url) {
+        } else if (result.assetPhotoUrl && result.assetPhotoUrl !== photo?.photo_url) {
           // Point the item at the asset's copy so it won't lose its photo if the triage file is cleaned up
           await supabase.from('InventoryItems').update({ photo_url: result.assetPhotoUrl }).eq('id', invData.id);
         }
@@ -434,8 +436,15 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
           </div>
 
           <div className="overflow-hidden border-t border-gray-800 border-b">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={photo.photo_url} className="w-full h-auto object-cover max-h-72" alt="Item" />
+            {photo?.photo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={photo.photo_url} className="w-full h-auto object-cover max-h-72" alt="Item" />
+            ) : (
+              <div className="w-full h-48 flex flex-col items-center justify-center gap-2 bg-gray-900">
+                <Package size={28} className="text-gray-700" />
+                <span className="font-mono text-[10px] text-gray-500 uppercase tracking-wider">No photo</span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -451,7 +460,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
             </button>
           </div>
 
-          {(photo.suggestion_type_name || photo.suggestion_quantity != null || photo.suggestion_quality || photo.suggestion_notes) && (
+          {(photo?.suggestion_type_name || photo?.suggestion_quantity != null || photo?.suggestion_quality || photo?.suggestion_notes) && (
             <div className="mx-7 mb-2 px-3 py-1.5 border border-blue-700/40 bg-blue-900/10">
               <span className="font-mono text-[9px] tracking-[0.15em] uppercase text-blue-400/70">
                 Pre-filled from mobile suggestion — edit freely
@@ -463,7 +472,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
 
             {/* Type Autocomplete */}
             <div className="relative">
-              <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500 mb-1.5">Item Type</label>
+              <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-400 mb-1.5">Item Type</label>
               <div className="relative">
                 <input
                   ref={typeInputRef}
@@ -477,9 +486,9 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
                   onBlur={() => setTimeout(() => setIsTypeDropdownOpen(false), 150)}
                   placeholder="e.g. Chair, Desk, Monitor"
                   required
-                  className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2.5 outline-none transition-colors text-gray-100 text-sm placeholder:text-gray-700 pr-8"
+                  className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2.5 outline-none transition-colors text-gray-100 text-sm placeholder:text-gray-500 pr-8"
                 />
-                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" size={14} />
+                <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={14} />
               </div>
 
               {/* Autocomplete Dropdown */}
@@ -517,7 +526,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
                   value={tagSearch}
                   onChange={(e) => setTagSearch(e.target.value)}
                   placeholder="Filter attributes..."
-                  className="w-full mb-2 border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-1.5 text-xs outline-none transition-colors text-gray-100 placeholder:text-gray-700"
+                  className="w-full mb-2 border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-1.5 text-xs outline-none transition-colors text-gray-100 placeholder:text-gray-500"
                 />
               )}
 
@@ -590,7 +599,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
                   </div>
                   <div className="flex flex-wrap gap-1.5 min-h-[28px] p-1.5 border border-gray-800 bg-gray-950">
                     {selectedTags.filter(st => !availableTags.find((t: any) => t.name === st)?.is_parent).length === 0 ? (
-                      <span className="font-mono text-[10px] text-gray-700 italic">No tags selected</span>
+                      <span className="font-mono text-[10px] text-gray-500 italic">No tags selected</span>
                     ) : (
                       selectedTags
                         .filter(st => !availableTags.find((t: any) => t.name === st)?.is_parent)
@@ -610,20 +619,20 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
             <div className="border border-gray-800 bg-gray-950/50 p-4">
               <div className="flex items-end gap-3 mb-3">
                 <div className="w-1/3">
-                  <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500 mb-1.5">Total Qty</label>
+                  <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-400 mb-1.5">Total Qty</label>
                   <input
                     type="number"
                     min="1"
                     value={totalQuantity || ''}
                     onChange={(e) => setTotalQuantity(parseInt(e.target.value) || 0)}
                     onBlur={() => { if (!totalQuantity || totalQuantity < 1) setTotalQuantity(1); }}
-                    className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2.5 outline-none transition-colors text-gray-100 text-sm placeholder:text-gray-700"
+                    className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2.5 outline-none transition-colors text-gray-100 text-sm placeholder:text-gray-500"
                   />
                 </div>
 
                 {!isSplit && (
                   <div className="flex-1">
-                    <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500 mb-1.5">Condition</label>
+                    <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-400 mb-1.5">Condition</label>
                     <div className="relative">
                       <button
                         type="button"
@@ -633,7 +642,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
                       >
                         {globalQuality}
                       </button>
-                      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" size={14} />
+                      <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none" size={14} />
                       {isConditionOpen && (
                         <div className="absolute z-20 w-full bg-gray-900 border border-gray-700 border-t-0 top-full">
                           {(['Excellent', 'Good', 'Fair', 'Poor'] as const).map(q => (
@@ -672,7 +681,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
               {isSplit && (
                 <div className="pt-3 border-t border-gray-800">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono text-[10px] text-gray-600">Allocate {totalQuantity} items by condition:</span>
+                    <span className="font-mono text-[10px] text-gray-500">Allocate {totalQuantity} items by condition:</span>
                     <span className={`font-mono text-[10px] px-2 py-0.5 border ${
                       currentSplitTotal === totalQuantity
                         ? 'border-green-700 text-green-400'
@@ -710,12 +719,12 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
 
             {/* Notes */}
             <div className="flex-1 flex flex-col">
-              <label className="block font-mono text-[10px] tracking-[0.12em] uppercase text-gray-500 mb-1.5">Observations / Notes</label>
+              <label className="block font-mono text-[10px] tracking-[0.12em] uppercase text-gray-400 mb-1.5">Observations / Notes</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Details on condition, manufacturer info, etc..."
-                className="w-full h-20 border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2 outline-none resize-none transition-colors text-gray-100 text-sm placeholder:text-gray-700 custom-scrollbar"
+                className="w-full h-20 border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2 outline-none resize-none transition-colors text-gray-100 text-sm placeholder:text-gray-500 custom-scrollbar"
               />
             </div>
 
@@ -782,9 +791,11 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
                             }]);
                             if (error) throw error;
                             // Remove from triage queue via status update (triggers Sidebar realtime handler)
-                            await supabase.from('IncomingPhotos').update({ status: 'processed' }).eq('id', photo.id);
+                            if (photo?.id) {
+                              await supabase.from('IncomingPhotos').update({ status: 'processed' }).eq('id', photo.id);
+                            }
                             // Delete the storage file since this photo won't be referenced by any item
-                            if (photo.photo_url) {
+                            if (photo?.photo_url) {
                               const marker = '/inventory_photos/';
                               const idx = photo.photo_url.indexOf(marker);
                               const filePath = idx !== -1 ? photo.photo_url.slice(idx + marker.length) : photo.photo_url.split('/').pop();
@@ -820,18 +831,20 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
 
             {/* Save as asset toggle + submit */}
             <div className="pt-2 mt-auto border-t border-gray-800">
-              <button
-                type="button"
-                onClick={() => setSaveAsAsset(v => !v)}
-                className={`w-full flex items-center gap-2.5 px-3 py-2 border text-sm font-medium transition-all mb-3 ${
-                  saveAsAsset
-                    ? 'border-amber-700 bg-amber-900/10 text-amber-400'
-                    : 'border-gray-700 text-gray-500 hover:border-amber-800 hover:text-amber-600'
-                }`}
-              >
-                <span className={`inline-block w-3 h-3 border transition-colors ${saveAsAsset ? 'border-amber-500 bg-amber-500' : 'border-gray-600'}`} />
-                <span className="font-mono text-[10px] tracking-wider uppercase">{saveAsAsset ? 'Will save as reusable asset' : 'Save as reusable asset'}</span>
-              </button>
+              {photo && (
+                <button
+                  type="button"
+                  onClick={() => setSaveAsAsset(v => !v)}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 border text-sm font-medium transition-all mb-3 ${
+                    saveAsAsset
+                      ? 'border-amber-700 bg-amber-900/10 text-amber-400'
+                      : 'border-gray-700 text-gray-500 hover:border-amber-800 hover:text-amber-600'
+                  }`}
+                >
+                  <span className={`inline-block w-3 h-3 border transition-colors ${saveAsAsset ? 'border-amber-500 bg-amber-500' : 'border-gray-600'}`} />
+                  <span className="font-mono text-[10px] tracking-wider uppercase">{saveAsAsset ? 'Will save as reusable asset' : 'Save as reusable asset'}</span>
+                </button>
+              )}
 
               <button
                 disabled={loading || (isSplit && currentSplitTotal !== totalQuantity) || !!matchedAsset}

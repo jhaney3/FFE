@@ -373,7 +373,7 @@ export default function EditItemModal({ item, onClose, onSaved }: {
 
             {/* Type Autocomplete */}
             <div className="relative">
-              <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500 mb-1.5">Item Type</label>
+              <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-400 mb-1.5">Item Type</label>
               <div className="relative">
                 <input
                   ref={typeInputRef}
@@ -387,7 +387,7 @@ export default function EditItemModal({ item, onClose, onSaved }: {
                   onBlur={() => setTimeout(() => setIsTypeDropdownOpen(false), 150)}
                   placeholder="e.g. Chair, Desk, Monitor"
                   required
-                  className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2.5 outline-none transition-colors text-gray-100 text-sm placeholder:text-gray-700 pr-8"
+                  className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2.5 outline-none transition-colors text-gray-100 text-sm placeholder:text-gray-500 pr-8"
                 />
                 <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-600 pointer-events-none" size={16} />
               </div>
@@ -419,14 +419,14 @@ export default function EditItemModal({ item, onClose, onSaved }: {
 
             {/* Tags / Attributes */}
             <div>
-              <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500 mb-1.5">Attributes</label>
+              <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-400 mb-1.5">Attributes</label>
 
               {availableTags.length > 5 && (
                 <input
                   value={tagSearch}
                   onChange={(e) => setTagSearch(e.target.value)}
                   placeholder="Filter attributes..."
-                  className="w-full mb-2 border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2.5 outline-none transition-colors text-gray-100 text-sm placeholder:text-gray-700"
+                  className="w-full mb-2 border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2.5 outline-none transition-colors text-gray-100 text-sm placeholder:text-gray-500"
                 />
               )}
 
@@ -508,7 +508,7 @@ export default function EditItemModal({ item, onClose, onSaved }: {
                   {/* Selected Tags Box */}
                   <div className="flex flex-wrap gap-1.5 min-h-[28px] p-1.5 border border-gray-800 bg-gray-950">
                     {selectedTags.filter(st => !availableTags.find((t: any) => t.name === st)?.is_parent).length === 0 ? (
-                      <span className="font-mono text-[10px] text-gray-700 p-0.5">No tags selected...</span>
+                      <span className="font-mono text-[10px] text-gray-500 p-0.5">No tags selected...</span>
                     ) : (
                       selectedTags
                         .filter(st => !availableTags.find((t: any) => t.name === st)?.is_parent)
@@ -529,20 +529,20 @@ export default function EditItemModal({ item, onClose, onSaved }: {
             <div className="border border-gray-800 bg-gray-950/50 p-4">
               <div className="flex items-end gap-3 mb-3">
                 <div className="w-1/3">
-                  <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500 mb-1.5">Total Qty</label>
+                  <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-400 mb-1.5">Total Qty</label>
                   <input
                     type="number"
                     min="1"
                     value={totalQuantity || ''}
                     onChange={(e) => setTotalQuantity(parseInt(e.target.value) || 0)}
                     onBlur={() => { if (!totalQuantity || totalQuantity < 1) setTotalQuantity(1); }}
-                    className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2.5 outline-none transition-colors text-gray-100 text-sm placeholder:text-gray-700"
+                    className="w-full border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2.5 outline-none transition-colors text-gray-100 text-sm placeholder:text-gray-500"
                   />
                 </div>
 
                 {!isSplit && (
                   <div className="flex-1">
-                    <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500 mb-1.5">Condition</label>
+                    <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-400 mb-1.5">Condition</label>
                     <div className="relative">
                       <button
                         type="button"
@@ -631,12 +631,12 @@ export default function EditItemModal({ item, onClose, onSaved }: {
 
             {/* Notes */}
             <div>
-              <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500 mb-1.5">Notes</label>
+              <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-400 mb-1.5">Notes</label>
               <textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Details on condition, manufacturer info, etc..."
-                className="w-full h-20 border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2 outline-none resize-none text-gray-100 text-sm placeholder:text-gray-700 custom-scrollbar"
+                className="w-full h-20 border border-gray-700 bg-gray-950 focus:border-blue-500 px-3 py-2 outline-none resize-none text-gray-100 text-sm placeholder:text-gray-500 custom-scrollbar"
               />
             </div>
 

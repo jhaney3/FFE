@@ -162,8 +162,8 @@ export default function Sidebar() {
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-32 gap-2">
-                <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-gray-700">No items</span>
-                <p className="text-xs text-gray-700">Scan the QR code to upload photos.</p>
+                <span className="font-mono text-[10px] tracking-[0.2em] uppercase text-gray-500">No items</span>
+                <p className="text-xs text-gray-500">Scan the QR code to upload photos.</p>
               </div>
             )}
           </div>

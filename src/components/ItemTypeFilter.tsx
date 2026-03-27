@@ -209,7 +209,7 @@ export default function ItemTypeFilter({
           placeholder="Search item types…"
           value={search}
           onChange={e => setSearch(e.target.value)}
-          className="w-full font-mono text-[11px] px-2.5 py-1.5 border border-gray-700 bg-gray-950 text-gray-300 placeholder:text-gray-700 outline-none focus:border-blue-600 transition-colors"
+          className="w-full font-mono text-[11px] px-2.5 py-1.5 border border-gray-700 bg-gray-950 text-gray-300 placeholder:text-gray-500 outline-none focus:border-blue-600 transition-colors"
         />
       </div>
 

@@ -11,17 +11,18 @@ import Dashboard from '@/components/Dashboard';
 import FormModal from '@/components/FormModal';
 import AssetDropModal from '@/components/AssetDropModal';
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
-import { LayoutGrid, Map as MapIcon, Database, LogOut, WifiOff, UserPlus } from 'lucide-react';
+import { LayoutGrid, Map as MapIcon, Database, LogOut, WifiOff, UserPlus, FolderTree } from 'lucide-react';
+import LocationsTree from '@/components/LocationsTree';
 import { BandwidthProvider, useLowBandwidth } from '@/lib/BandwidthContext';
 import { supabase } from '@/lib/supabase';
 import type { User } from '@supabase/supabase-js';
 import InviteModal from '@/components/InviteModal';
 
 function HomeInner() {
-  const [activeTab, setActiveTab] = useState<'map' | 'list'>('map');
+  const [activeTab, setActiveTab] = useState<'map' | 'list' | 'tree'>('map');
   const [activePhoto, setActivePhoto] = useState<any>(null);
   const [activeAsset, setActiveAsset] = useState<any>(null);
-  const [modalState, setModalState] = useState<{ photo: any, room: any } | null>(null);
+  const [modalState, setModalState] = useState<{ photo: any | null, room: any } | null>(null);
   const [assetDropState, setAssetDropState] = useState<{ asset: any, room: any } | null>(null);
   const [itemsVersion, setItemsVersion] = useState(0);
   const [user, setUser] = useState<User | null>(null);
@@ -39,8 +40,8 @@ function HomeInner() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleSignOut = () => {
-    supabase.auth.signOut().catch(() => {});
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
     window.location.replace('/login');
   };
 
@@ -123,6 +124,16 @@ function HomeInner() {
           >
             <LayoutGrid size={11} /> List
           </button>
+          <button
+            onClick={() => setActiveTab('tree')}
+            className={`flex items-center gap-1.5 px-4 py-1.5 font-mono text-[10px] tracking-[0.12em] uppercase border transition-colors ${
+              activeTab === 'tree'
+                ? 'border-blue-600 bg-blue-600/10 text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-300 hover:bg-gray-900'
+            }`}
+          >
+            <FolderTree size={11} /> Files
+          </button>
         </div>
         <div className="flex items-center gap-3">
           {user?.user_metadata?.avatar_url && (
@@ -152,7 +163,9 @@ function HomeInner() {
       </div>
 
       <main className="flex-1 w-full bg-gray-950 relative flex min-h-0 min-w-0">
-        {activeTab === 'map' ? (
+        {activeTab === 'list' ? (
+          <Dashboard />
+        ) : (
           <DndContext
             sensors={sensors}
             onDragStart={handleDragStart}
@@ -161,8 +174,14 @@ function HomeInner() {
             modifiers={[snapCenterToCursor]}
           >
             <Sidebar />
-            <MapArea itemsVersion={itemsVersion} />
-            
+            {activeTab === 'map' && <MapArea itemsVersion={itemsVersion} />}
+            {activeTab === 'tree' && (
+              <LocationsTree
+                onAddItem={(room) => setModalState({ photo: null, room })}
+                itemsVersion={itemsVersion}
+              />
+            )}
+
             <DragOverlay dropAnimation={null}>
               {activePhoto ? (
                 <div className="w-10 h-10 overflow-hidden bg-gray-900 cursor-grabbing border border-blue-500 flex items-center justify-center relative pointer-events-none">
@@ -186,8 +205,6 @@ function HomeInner() {
               ) : null}
             </DragOverlay>
           </DndContext>
-        ) : (
-          <Dashboard />
         )}
       </main>
 

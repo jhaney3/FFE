@@ -1,31 +1,32 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, Building2, Layers, Tag, Type } from 'lucide-react';
+import { X } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { useProjectId } from '@/lib/ProjectContext';
 
-interface NewZoneModalProps {
-  onSave: (data: { name: string; page_number: number; level_name: string; building_name: string; room_type: string }) => void;
-  onCancel: () => void;
-  pageNumber: number;
-  initialRoom?: any; // when present, modal is in edit mode
+interface AddLocationModalProps {
+  onSaved: () => void;
+  onClose: () => void;
+  initialBuilding?: string;
+  initialLevel?: string;
 }
 
 const BASE_ROOM_TYPES = [
   'Classroom', 'Kitchen', 'Storage Closet', 'Office', 'Bathroom', 'Hallway', 'Sanctuary', 'Lobby',
 ];
 
-export default function NewZoneModal({ onSave, onCancel, pageNumber, initialRoom }: NewZoneModalProps) {
-  const editing = !!initialRoom;
-  const [name, setName] = useState(initialRoom?.name || '');
-  const [levelName, setLevelName] = useState(initialRoom?.level_name || '');
-  const [buildingName, setBuildingName] = useState(initialRoom?.building_name || '');
-  const [roomType, setRoomType] = useState(initialRoom?.room_type || 'Classroom');
+export default function AddLocationModal({ onSaved, onClose, initialBuilding, initialLevel }: AddLocationModalProps) {
+  const projectId = useProjectId();
+  const [name, setName] = useState('');
+  const [levelName, setLevelName] = useState(initialLevel || '');
+  const [buildingName, setBuildingName] = useState(initialBuilding || '');
+  const [roomType, setRoomType] = useState('Classroom');
   const [customTypeInput, setCustomTypeInput] = useState('');
   const [dbRoomTypes, setDbRoomTypes] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
   const customInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch distinct room_type values already in the DB and merge with base list
   useEffect(() => {
     const fetchRoomTypes = async () => {
       const { data } = await supabase.from('Rooms').select('room_type');
@@ -33,7 +34,6 @@ export default function NewZoneModal({ onSave, onCancel, pageNumber, initialRoom
         const distinct = Array.from(new Set(
           data.map((r: any) => r.room_type).filter(Boolean)
         )) as string[];
-        // Only keep ones not already in the base list
         setDbRoomTypes(distinct.filter(t => !BASE_ROOM_TYPES.includes(t)));
       }
     };
@@ -46,9 +46,9 @@ export default function NewZoneModal({ onSave, onCancel, pageNumber, initialRoom
 
   const allRoomTypes = [...BASE_ROOM_TYPES, ...dbRoomTypes, 'Other'];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || !projectId) return;
 
     let finalRoomType = roomType;
     if (roomType === 'Other') {
@@ -57,7 +57,23 @@ export default function NewZoneModal({ onSave, onCancel, pageNumber, initialRoom
       finalRoomType = trimmed;
     }
 
-    onSave({ name, page_number: pageNumber, level_name: levelName, building_name: buildingName, room_type: finalRoomType });
+    setSaving(true);
+    try {
+      const { error } = await supabase.from('Rooms').insert([{
+        name: name.trim(),
+        building_name: buildingName.trim() || null,
+        level_name: levelName.trim() || null,
+        room_type: finalRoomType,
+        floor_plan_id: null,
+        map_coordinates: null,
+        project_id: projectId,
+      }]);
+      if (error) throw error;
+      onSaved();
+    } catch (err: any) {
+      alert(err.message);
+      setSaving(false);
+    }
   };
 
   return (
@@ -66,20 +82,18 @@ export default function NewZoneModal({ onSave, onCancel, pageNumber, initialRoom
         <div className="px-6 py-4 border-b border-gray-800 flex justify-between items-center">
           <div>
             <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-gray-500 mb-1">
-              {editing ? 'Edit Zone' : 'New Zone'}
+              New Location
             </p>
-            <h2 className="text-base font-semibold text-gray-100">
-              {editing ? 'Update Configuration' : 'Configure Zone'}
-            </h2>
+            <h2 className="text-base font-semibold text-gray-100">Add Location</h2>
           </div>
-          <button onClick={onCancel} className="p-1.5 text-gray-600 hover:text-gray-200 hover:bg-gray-800 border border-transparent hover:border-gray-700 transition-colors">
+          <button onClick={onClose} className="p-1.5 text-gray-600 hover:text-gray-200 hover:bg-gray-800 border border-transparent hover:border-gray-700 transition-colors">
             <X size={16} />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-400 mb-1.5">Zone Name *</label>
+            <label className="block font-mono text-[10px] tracking-[0.15em] uppercase text-gray-400 mb-1.5">Location Name *</label>
             <input
               type="text"
               required
@@ -141,17 +155,17 @@ export default function NewZoneModal({ onSave, onCancel, pageNumber, initialRoom
           <div className="pt-2 flex gap-2">
             <button
               type="button"
-              onClick={onCancel}
+              onClick={onClose}
               className="flex-1 py-2 font-mono text-[11px] tracking-wider uppercase border border-gray-700 text-gray-400 hover:text-gray-200 hover:bg-gray-800 transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
-              disabled={!name.trim() || (roomType === 'Other' && !customTypeInput.trim())}
+              disabled={saving || !name.trim() || (roomType === 'Other' && !customTypeInput.trim())}
               className="flex-1 py-2 font-mono text-[11px] tracking-wider uppercase border border-blue-600 bg-blue-600/10 text-blue-400 hover:bg-blue-600/20 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
-              {editing ? 'Save Changes' : 'Save Zone'}
+              {saving ? 'Saving...' : 'Save Location'}
             </button>
           </div>
         </form>
