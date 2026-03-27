@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { supabase } from '@/lib/supabase';
 import { saveAssetIfNew } from '@/lib/saveAsset';
 import { useProjectId } from '@/lib/ProjectContext';
-import { X, Check, Tag, ChevronDown, SplitSquareVertical, Info, Package } from 'lucide-react';
+import { X, Check, Tag, ChevronDown, SplitSquareVertical, Info, Package, Upload, Loader2 } from 'lucide-react';
 
 export default function EditItemModal({ item, onClose, onSaved }: {
   item: any;
@@ -44,6 +44,30 @@ export default function EditItemModal({ item, onClose, onSaved }: {
 
   const [notes, setNotes] = useState(item.notes || '');
   const [saveAsAsset, setSaveAsAsset] = useState(false);
+
+  // Photo upload state (for items that were created without a photo)
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(item.photo_url || null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoUpload = async (file: File) => {
+    setPhotoUploading(true);
+    try {
+      const ext  = file.name.split('.').pop() || 'jpg';
+      const name = `manual_upload_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('inventory_photos').upload(name, file);
+      if (upErr) throw upErr;
+      const { data: { publicUrl } } = supabase.storage.from('inventory_photos').getPublicUrl(name);
+      const { error } = await supabase.from('InventoryItems').update({ photo_url: publicUrl }).eq('id', item.id);
+      if (error) throw error;
+      item.photo_url = publicUrl;
+      setPhotoPreviewUrl(publicUrl);
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
 
   // Initialise quantity/quality state from saved item
   useEffect(() => {
@@ -337,18 +361,36 @@ export default function EditItemModal({ item, onClose, onSaved }: {
           </div>
 
           <div className="border-t border-gray-800 border-b overflow-hidden">
-            {item.photo_url ? (
+            {photoPreviewUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={item.photo_url}
+                src={photoPreviewUrl}
                 className="w-full h-auto object-cover max-h-72"
                 alt="Item"
               />
             ) : (
-              <div className="w-full h-48 bg-gray-900 flex items-center justify-center">
-                <Package size={40} className="text-gray-700" />
+              <div
+                className="w-full h-48 bg-gray-900 flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-gray-800/60 transition-colors border-2 border-dashed border-gray-800 hover:border-gray-600"
+                onClick={() => !photoUploading && photoInputRef.current?.click()}
+                title="Click to add a photo"
+              >
+                {photoUploading ? (
+                  <Loader2 size={28} className="text-gray-600 animate-spin" />
+                ) : (
+                  <>
+                    <Upload size={28} className="text-gray-700" />
+                    <p className="font-mono text-[10px] tracking-[0.15em] uppercase text-gray-600">Add Photo</p>
+                  </>
+                )}
               </div>
             )}
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={e => { const f = e.target.files?.[0]; if (f) handlePhotoUpload(f); e.target.value = ''; }}
+            />
           </div>
         </div>
 

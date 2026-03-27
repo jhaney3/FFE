@@ -2,8 +2,8 @@
 
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { useDroppable } from '@dnd-kit/core';
-import { Building2, Layers, Package, Pencil, Tag, Trash2 } from 'lucide-react';
+import { useDroppable, useDraggable } from '@dnd-kit/core';
+import { Building2, Layers, Package, Pencil, Trash2, GripVertical } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { useLowBandwidth } from '@/lib/BandwidthContext';
 import EditItemModal from './EditItemModal';
@@ -47,6 +47,88 @@ function getRoomColor(roomType?: string): string {
   let hash = 0;
   for (let i = 0; i < key.length; i++) hash = (hash * 31 + key.charCodeAt(i)) >>> 0;
   return FALLBACK_PALETTE[hash % FALLBACK_PALETTE.length];
+}
+
+// ─── Draggable item row ───────────────────────────────────────────────────────
+
+function DraggableItemRow({ item, tagMeta, lowBandwidth, isRevealed, onReveal, onEdit, onDelete }: {
+  item: any;
+  tagMeta?: Map<string, boolean>;
+  lowBandwidth: boolean;
+  isRevealed: boolean;
+  onReveal: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `inventory-item-${item.id}`,
+    data: { type: 'inventory-item', item },
+  });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`group/item flex items-center gap-2 p-2 border border-gray-800 bg-gray-950/50 relative transition-opacity ${isDragging ? 'opacity-30' : 'opacity-100'}`}
+    >
+      {/* Drag handle */}
+      <div
+        {...listeners}
+        {...attributes}
+        className="text-gray-700 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0 touch-none py-1 px-0.5"
+        title="Drag to move to another room"
+      >
+        <GripVertical size={11} />
+      </div>
+
+      {/* Photo */}
+      {item.photo_url && (!lowBandwidth || isRevealed) ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={item.photo_url} alt={item.ItemTypes?.name || 'Item'} className="w-9 h-9 object-cover bg-gray-800 shrink-0" loading="lazy" />
+      ) : item.photo_url ? (
+        <div
+          onClick={onReveal}
+          title="Click to load image"
+          className="w-9 h-9 bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-600 shrink-0 cursor-pointer hover:text-gray-400 hover:border-gray-600 transition-colors"
+        >
+          <Package size={14} />
+        </div>
+      ) : (
+        <div className="w-9 h-9 bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-600 shrink-0"><Package size={14} /></div>
+      )}
+
+      <div className="flex-1 min-w-0 pr-10">
+        <p className="text-[12px] font-semibold text-gray-100 truncate leading-tight">{item.ItemTypes?.name}</p>
+        <div className="flex items-center gap-1.5 mt-1 overflow-hidden">
+          {item.qty_excellent > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1 h-1 bg-green-400" /><span className="font-mono text-[10px] font-bold text-green-400">{item.qty_excellent}</span><span className="font-mono text-[9px] text-green-400/60">E</span></span>}
+          {item.qty_good      > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1 h-1 bg-blue-400"  /><span className="font-mono text-[10px] font-bold text-blue-400" >{item.qty_good}     </span><span className="font-mono text-[9px] text-blue-400/60" >G</span></span>}
+          {item.qty_fair      > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1 h-1 bg-yellow-400"/><span className="font-mono text-[10px] font-bold text-yellow-400">{item.qty_fair}     </span><span className="font-mono text-[9px] text-yellow-400/60">F</span></span>}
+          {item.qty_poor      > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1 h-1 bg-red-400"   /><span className="font-mono text-[10px] font-bold text-red-400"  >{item.qty_poor}     </span><span className="font-mono text-[9px] text-red-400/60"  >P</span></span>}
+          {item.attributes?.length > 0 && <span className="ffe-attr w-px h-3 bg-gray-700 shrink-0 mx-0.5" />}
+          {[...(item.attributes ?? [])].sort((a: string, b: string) => {
+            const aP = tagMeta?.get(`${item.item_type_id}:${a}`) ?? false;
+            const bP = tagMeta?.get(`${item.item_type_id}:${b}`) ?? false;
+            if (aP !== bP) return aP ? -1 : 1;
+            return a.localeCompare(b);
+          }).map((tag: string) => {
+            const isParent = tagMeta?.get(`${item.item_type_id}:${tag}`) ?? false;
+            return (
+              <span key={tag} className={`ffe-attr font-mono text-[9px] px-1 py-px border shrink-0 leading-none ${
+                isParent
+                  ? 'border-amber-700/50 bg-amber-900/20 text-amber-400'
+                  : 'border-blue-800/50 bg-blue-900/15 text-blue-400'
+              }`}>{tag}</span>
+            );
+          })}
+        </div>
+        {item.notes && <p className="ffe-notes font-mono text-[9px] text-gray-600 mt-0.5 truncate leading-tight">{item.notes}</p>}
+      </div>
+
+      <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
+        <button onClick={onEdit} className="p-1 text-gray-600 hover:text-blue-400 hover:bg-blue-500/10 transition-colors border border-transparent hover:border-blue-800" title="Edit item"><Pencil size={11} /></button>
+        <button onClick={onDelete} className="p-1 text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors border border-transparent hover:border-red-800" title="Remove from room"><Trash2 size={11} /></button>
+      </div>
+    </div>
+  );
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -559,51 +641,16 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
               {/* Item list */}
               <div className="flex-1 space-y-1.5 overflow-y-auto pr-1 min-h-0 custom-scrollbar">
                 {items.length > 0 ? items.map(item => (
-                  <div key={item.id} className="group/item flex items-center gap-2.5 p-2 border border-gray-800 bg-gray-950/50 relative">
-                    {item.photo_url && (!lowBandwidth || revealedImages.has(item.id)) ? (
-                      <img src={item.photo_url} alt={item.ItemTypes?.name || 'Item'} className="w-9 h-9 object-cover bg-gray-800 shrink-0" loading="lazy" />
-                    ) : item.photo_url ? (
-                      <div
-                        onClick={() => setRevealedImages(prev => { const s = new Set(prev); s.add(item.id); return s; })}
-                        title="Click to load image"
-                        className="w-9 h-9 bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-600 shrink-0 cursor-pointer hover:text-gray-400 hover:border-gray-600 transition-colors"
-                      >
-                        <Package size={14} />
-                      </div>
-                    ) : (
-                      <div className="w-9 h-9 bg-gray-800 border border-gray-700 flex items-center justify-center text-gray-600 shrink-0"><Package size={14} /></div>
-                    )}
-                    <div className="flex-1 min-w-0 pr-10">
-                      <p className="text-[12px] font-semibold text-gray-100 truncate leading-tight">{item.ItemTypes?.name}</p>
-                      <div className="flex items-center gap-1.5 mt-1 overflow-hidden">
-                        {item.qty_excellent > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1 h-1 bg-green-400" /><span className="font-mono text-[10px] font-bold text-green-400">{item.qty_excellent}</span><span className="font-mono text-[9px] text-green-400/60">E</span></span>}
-                        {item.qty_good      > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1 h-1 bg-blue-400"  /><span className="font-mono text-[10px] font-bold text-blue-400" >{item.qty_good}     </span><span className="font-mono text-[9px] text-blue-400/60" >G</span></span>}
-                        {item.qty_fair      > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1 h-1 bg-yellow-400"/><span className="font-mono text-[10px] font-bold text-yellow-400">{item.qty_fair}     </span><span className="font-mono text-[9px] text-yellow-400/60">F</span></span>}
-                        {item.qty_poor      > 0 && <span className="flex items-center gap-1 shrink-0"><span className="w-1 h-1 bg-red-400"   /><span className="font-mono text-[10px] font-bold text-red-400"  >{item.qty_poor}     </span><span className="font-mono text-[9px] text-red-400/60"  >P</span></span>}
-                        {item.attributes?.length > 0 && <span className="ffe-attr w-px h-3 bg-gray-700 shrink-0 mx-0.5" />}
-                        {[...(item.attributes ?? [])].sort((a: string, b: string) => {
-                          const aP = tagMeta?.get(`${item.item_type_id}:${a}`) ?? false;
-                          const bP = tagMeta?.get(`${item.item_type_id}:${b}`) ?? false;
-                          if (aP !== bP) return aP ? -1 : 1;
-                          return a.localeCompare(b);
-                        }).map((tag: string) => {
-                          const isParent = tagMeta?.get(`${item.item_type_id}:${tag}`) ?? false;
-                          return (
-                            <span key={tag} className={`ffe-attr font-mono text-[9px] px-1 py-px border shrink-0 leading-none ${
-                              isParent
-                                ? 'border-amber-700/50 bg-amber-900/20 text-amber-400'
-                                : 'border-blue-800/50 bg-blue-900/15 text-blue-400'
-                            }`}>{tag}</span>
-                          );
-                        })}
-                      </div>
-                      {item.notes && <p className="ffe-notes font-mono text-[9px] text-gray-600 mt-0.5 truncate leading-tight">{item.notes}</p>}
-                    </div>
-                    <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-0.5 opacity-0 group-hover/item:opacity-100 transition-opacity">
-                      <button onClick={() => setEditingItem(item)} className="p-1 text-gray-600 hover:text-blue-400 hover:bg-blue-500/10 transition-colors border border-transparent hover:border-blue-800" title="Edit item"><Pencil size={11} /></button>
-                      <button onClick={() => handleDeleteItem(item.id, item.photo_url)} className="p-1 text-gray-600 hover:text-red-400 hover:bg-red-500/10 transition-colors border border-transparent hover:border-red-800" title="Remove from room"><Trash2 size={11} /></button>
-                    </div>
-                  </div>
+                  <DraggableItemRow
+                    key={item.id}
+                    item={item}
+                    tagMeta={tagMeta}
+                    lowBandwidth={lowBandwidth}
+                    isRevealed={revealedImages.has(item.id)}
+                    onReveal={() => setRevealedImages(prev => { const s = new Set(prev); s.add(item.id); return s; })}
+                    onEdit={() => setEditingItem(item)}
+                    onDelete={() => handleDeleteItem(item.id, item.photo_url)}
+                  />
                 )) : (
                   <div className="text-center py-6 flex flex-col items-center gap-1.5">
                     <Package size={18} className="text-gray-700" />

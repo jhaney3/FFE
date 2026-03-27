@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useDroppable } from '@dnd-kit/core';
+import { useDroppable, useDraggable } from '@dnd-kit/core';
 import { supabase } from '@/lib/supabase';
 import { useProjectId } from '@/lib/ProjectContext';
-import { ChevronRight, ChevronDown, Map as MapIcon, Package, Plus, Pencil, Trash2 } from 'lucide-react';
+import { ChevronRight, ChevronDown, Map as MapIcon, Package, Plus, Pencil, Trash2, GripVertical } from 'lucide-react';
 import AddLocationModal from './AddLocationModal';
 import EditItemModal from './EditItemModal';
 import NewZoneModal from './NewZoneModal';
@@ -79,6 +79,11 @@ function ItemCard({ item, tagParents, onEdit, onDelete }: {
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
+    id: `inventory-item-${item.id}`,
+    data: { type: 'inventory-item', item },
+  });
+
   const total = (item.qty_excellent ?? 0) + (item.qty_good ?? 0) + (item.qty_fair ?? 0) + (item.qty_poor ?? 0);
 
   const conditionEntries = [
@@ -106,7 +111,20 @@ function ItemCard({ item, tagParents, onEdit, onDelete }: {
     .filter((a: string) => !tagParents.has(a)).sort();
 
   return (
-    <div className="group/card flex gap-3 border border-gray-800 bg-gray-950/50 p-3 hover:border-gray-700 transition-colors">
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      className={`group/card flex gap-3 border border-gray-800 bg-gray-950/50 p-3 hover:border-gray-700 transition-colors transition-opacity ${isDragging ? 'opacity-30' : 'opacity-100'}`}
+    >
+      {/* Drag handle */}
+      <div
+        {...listeners}
+        className="self-center text-gray-700 hover:text-gray-500 cursor-grab active:cursor-grabbing shrink-0 touch-none py-1"
+        title="Drag to move to another room"
+      >
+        <GripVertical size={13} />
+      </div>
+
       {/* Thumbnail */}
       <div className="w-14 h-14 shrink-0 bg-gray-900 border border-gray-800 overflow-hidden">
         {item.photo_url ? (

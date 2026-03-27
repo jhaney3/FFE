@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useLowBandwidth } from '@/lib/BandwidthContext';
-import { Download, Filter, Search, Pencil, X, Check, Minus, Printer, Package } from 'lucide-react';
+import { Download, Filter, Search, Pencil, X, Check, Minus, Printer, Package, MoveRight } from 'lucide-react';
 
 function Checkbox({ checked, indeterminate, onChange }: {
   checked: boolean;
@@ -30,6 +30,7 @@ function Checkbox({ checked, indeterminate, onChange }: {
 }
 import Papa from 'papaparse';
 import MassEditModal from './MassEditModal';
+import MigrateItemModal from './MigrateItemModal';
 
 export default function Dashboard() {
   const { lowBandwidth } = useLowBandwidth();
@@ -51,6 +52,7 @@ export default function Dashboard() {
   // Selection
   const [selectedIds, setSelectedIds]     = useState<Set<string>>(new Set());
   const [massEditOpen, setMassEditOpen]   = useState(false);
+  const [migrateOpen, setMigrateOpen]     = useState(false);
 
   useEffect(() => {
     fetchItems();
@@ -466,6 +468,12 @@ export default function Dashboard() {
             <Pencil size={11} /> Mass Edit
           </button>
           <button
+            onClick={() => setMigrateOpen(true)}
+            className="flex items-center gap-1.5 font-mono text-[10px] tracking-wider uppercase text-teal-400 border border-teal-700/50 hover:border-teal-500 bg-teal-600/5 hover:bg-teal-600/15 px-3 py-1.5 transition-colors"
+          >
+            <MoveRight size={11} /> Migrate
+          </button>
+          <button
             onClick={clearSelection}
             className="text-gray-600 hover:text-gray-300 transition-colors p-0.5"
             title="Clear selection"
@@ -481,6 +489,14 @@ export default function Dashboard() {
           selectedItems={selectedItems}
           allItems={items}
           onClose={() => setMassEditOpen(false)}
+          onSaved={() => { clearSelection(); fetchItems(); }}
+        />
+      )}
+
+      {migrateOpen && (
+        <MigrateItemModal
+          itemIds={[...selectedIds]}
+          onClose={() => setMigrateOpen(false)}
           onSaved={() => { clearSelection(); fetchItems(); }}
         />
       )}

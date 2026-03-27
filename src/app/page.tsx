@@ -11,7 +11,7 @@ import Dashboard from '@/components/Dashboard';
 import FormModal from '@/components/FormModal';
 import AssetDropModal from '@/components/AssetDropModal';
 import { DndContext, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core';
-import { LayoutGrid, Map as MapIcon, Database, LogOut, WifiOff, UserPlus, FolderTree } from 'lucide-react';
+import { LayoutGrid, Map as MapIcon, Database, LogOut, WifiOff, UserPlus, FolderTree, Package } from 'lucide-react';
 import LocationsTree from '@/components/LocationsTree';
 import { BandwidthProvider, useLowBandwidth } from '@/lib/BandwidthContext';
 import { supabase } from '@/lib/supabase';
@@ -22,6 +22,7 @@ function HomeInner() {
   const [activeTab, setActiveTab] = useState<'map' | 'list' | 'tree'>('map');
   const [activePhoto, setActivePhoto] = useState<any>(null);
   const [activeAsset, setActiveAsset] = useState<any>(null);
+  const [activeItem, setActiveItem] = useState<any>(null);
   const [modalState, setModalState] = useState<{ photo: any | null, room: any } | null>(null);
   const [assetDropState, setAssetDropState] = useState<{ asset: any, room: any } | null>(null);
   const [itemsVersion, setItemsVersion] = useState(0);
@@ -66,7 +67,9 @@ function HomeInner() {
 
   const handleDragStart = (event: any) => {
     const data = event.active.data.current;
-    if (data?.type === 'asset') {
+    if (data?.type === 'inventory-item') {
+      setActiveItem(data.item);
+    } else if (data?.type === 'asset') {
       setActiveAsset(data.asset);
     } else {
       setActivePhoto(data?.photo);
@@ -76,12 +79,24 @@ function HomeInner() {
   const handleDragEnd = (event: any) => {
     setActivePhoto(null);
     setActiveAsset(null);
+    setActiveItem(null);
     const { over, active } = event;
 
     if (over && active) {
       const data = active.data.current;
       const room = over.data.current?.room;
-      if (data?.type === 'asset') {
+
+      if (data?.type === 'inventory-item') {
+        if (room && room.id !== data.item.room_id) {
+          supabase.from('InventoryItems')
+            .update({ room_id: room.id })
+            .eq('id', data.item.id)
+            .then(({ error }) => {
+              if (error) alert(error.message);
+              else setItemsVersion(v => v + 1);
+            });
+        }
+      } else if (data?.type === 'asset') {
         setTimeout(() => setAssetDropState({ asset: data.asset, room }), 50);
       } else {
         const photo = data?.photo;
@@ -183,7 +198,12 @@ function HomeInner() {
             )}
 
             <DragOverlay dropAnimation={null}>
-              {activePhoto ? (
+              {activeItem ? (
+                <div className="bg-gray-900 border border-teal-600/60 px-3 py-1.5 pointer-events-none flex items-center gap-2 shadow-xl cursor-grabbing w-max">
+                  <Package size={12} className="text-teal-500 shrink-0" />
+                  <span className="font-mono text-[10px] tracking-wider text-teal-400">{activeItem.ItemTypes?.name || 'Item'}</span>
+                </div>
+              ) : activePhoto ? (
                 <div className="w-10 h-10 overflow-hidden bg-gray-900 cursor-grabbing border border-blue-500 flex items-center justify-center relative pointer-events-none">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={activePhoto.photo_url} alt="Dragging item" className="w-full h-full object-cover opacity-60" />
