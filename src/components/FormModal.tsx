@@ -107,11 +107,16 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
   // Effect A — apply suggestion type, quantity, quality, notes once itemTypes loads
   useEffect(() => {
     if (suggestionApplied) return;
-    if (itemTypes.length === 0) return;
-    if (!photo.suggestion_type_name) return;
+    // Only wait for itemTypes when there's a type to apply; qty/quality/notes don't need them
+    if (photo.suggestion_type_name && itemTypes.length === 0) return;
+    // Nothing to apply if no suggestion fields are set
+    const hasAnySuggestion = photo.suggestion_type_name || photo.suggestion_quantity != null || photo.suggestion_quality || photo.suggestion_notes;
+    if (!hasAnySuggestion) return;
 
     setSuggestionApplied(true);
-    setTypeSearch(photo.suggestion_type_name); // triggers existing [typeSearch] effect → fetchTagsForType
+    if (photo.suggestion_type_name) {
+      setTypeSearch(photo.suggestion_type_name); // triggers existing [typeSearch] effect → fetchTagsForType
+    }
 
     const hasSplit = [photo.suggestion_qty_excellent, photo.suggestion_qty_good,
                       photo.suggestion_qty_fair, photo.suggestion_qty_poor]
@@ -446,7 +451,7 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
             </button>
           </div>
 
-          {photo.suggestion_type_name && (
+          {(photo.suggestion_type_name || photo.suggestion_quantity != null || photo.suggestion_quality || photo.suggestion_notes) && (
             <div className="mx-7 mb-2 px-3 py-1.5 border border-blue-700/40 bg-blue-900/10">
               <span className="font-mono text-[9px] tracking-[0.15em] uppercase text-blue-400/70">
                 Pre-filled from mobile suggestion — edit freely
