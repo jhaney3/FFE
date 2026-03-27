@@ -48,11 +48,13 @@ export default function FormModal({ photo, room, onClose, onSaved }: { photo: an
 
   useEffect(() => {
     fetchTypes();
-    requestAnimationFrame(() => {
+    if (!photo.suggestion_type_name) {
       requestAnimationFrame(() => {
-        if (typeInputRef.current) typeInputRef.current.focus();
+        requestAnimationFrame(() => {
+          if (typeInputRef.current) typeInputRef.current.focus();
+        });
       });
-    });
+    }
   }, []);
 
   useEffect(() => {

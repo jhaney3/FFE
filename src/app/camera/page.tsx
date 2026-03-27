@@ -145,9 +145,11 @@ function CameraCapture() {
     setPhase({ phase: 'submitting', photoUrl });
     try {
       const row: Record<string, any> = { photo_url: photoUrl, uploaded_by: uid, status: 'pending', project_id: pid };
-      if (withSuggestions && typeSearch.trim()) {
-        row.suggestion_type_name = typeSearch.trim();
-        if (selectedTags.length > 0) row.suggestion_attributes = selectedTags;
+      if (withSuggestions) {
+        if (typeSearch.trim()) {
+          row.suggestion_type_name = typeSearch.trim();
+          if (selectedTags.length > 0) row.suggestion_attributes = selectedTags;
+        }
         row.suggestion_quality = quality;
         if (isSplit) {
           row.suggestion_qty_excellent = splitQty.Excellent;
@@ -507,7 +509,7 @@ function CameraCapture() {
               {!isSplit ? (
                 /* Single quality — 4 chips in a row */
                 <div className="grid grid-cols-4 gap-1">
-                  {(Object.keys(Q) as QualityKey[]).map(q => {
+                  {(['Poor', 'Fair', 'Good', 'Excellent'] as QualityKey[]).map(q => {
                     const sel = quality === q;
                     return (
                       <button
@@ -528,7 +530,7 @@ function CameraCapture() {
               ) : (
                 /* Split mode — 4 number inputs */
                 <div className="grid grid-cols-4 gap-1">
-                  {(Object.keys(Q) as QualityKey[]).map(q => (
+                  {(['Poor', 'Fair', 'Good', 'Excellent'] as QualityKey[]).map(q => (
                     <div key={q} className="border border-slate-800 bg-slate-950 p-1.5 flex flex-col items-center gap-1">
                       <span className={`text-[7px] tracking-[0.12em] uppercase ${Q[q].text}`}>{Q[q].short}</span>
                       <input
