@@ -85,7 +85,7 @@ export default function ItemTypeFilter({
       td.total += qty;
 
       const attrs: string[] = item.attributes || [];
-      const comboKey = attrs.join(', ') || '';
+      const comboKey = [...attrs].sort().join(', ');
       const parentAttr = attrs.find(a => tagMeta.get(`${typeId}:${a}`)) ?? '(ungrouped)';
 
       if (!td.parentGroups.has(parentAttr)) td.parentGroups.set(parentAttr, { total: 0, combos: new Map() });

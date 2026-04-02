@@ -430,12 +430,18 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
     ? items.reduce((sum, item) => {
         if (item.ItemTypes?.name !== spotlightType) return sum;
         if (spotlightAttribute) {
-          // Full combo match (e.g. "Adult, Black")
-          const combo = item.attributes?.length > 0 ? [...item.attributes].sort().join(', ') : '(no attributes)';
+          // Full combo match (e.g. "Adult, Black") — sort to match ItemTypeFilter's comboKey
+          const combo = [...(item.attributes || [])].sort().join(', ');
           if (combo !== spotlightAttribute) return sum;
         } else if (spotlightParent) {
-          // Parent-only match — item must have the parent attribute anywhere in its array
-          if (!(item.attributes || []).includes(spotlightParent)) return sum;
+          if (spotlightParent === '(ungrouped)') {
+            // Match items that have no parent attribute
+            const hasParent = (item.attributes || []).some((a: string) => tagMeta?.get(`${item.item_type_id}:${a}`));
+            if (hasParent) return sum;
+          } else {
+            // Parent-only match — item must have the parent attribute anywhere in its array
+            if (!(item.attributes || []).includes(spotlightParent)) return sum;
+          }
         }
         return sum + (item.qty_excellent || 0) + (item.qty_good || 0) + (item.qty_fair || 0) + (item.qty_poor || 0);
       }, 0)

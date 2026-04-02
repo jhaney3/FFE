@@ -272,6 +272,13 @@ function CameraCapture() {
         </p>
       </div>
 
+      {/* ── Optional hint ───────────────────────────────────────────────── */}
+      <div className="shrink-0 px-4 py-1.5 border-b border-slate-900 bg-black">
+        <p className="text-[7px] tracking-[0.25em] uppercase text-slate-700 text-center">
+          Suggestions optional — tap Skip to submit photo only
+        </p>
+      </div>
+
       {/* ── Step indicator ──────────────────────────────────────────────── */}
       <div className="shrink-0 flex items-center gap-0 border-b border-slate-900">
         {([1, 2] as const).map((s, i) => {
@@ -570,17 +577,24 @@ function CameraCapture() {
               type="button"
               onClick={() => submit(false)}
               disabled={busy}
-              className="flex-1 border-r border-slate-900 text-[8px] tracking-[0.22em] uppercase text-slate-600 active:bg-slate-950 transition-colors disabled:opacity-40"
+              className="flex-[2] border-r border-slate-800 bg-slate-950 flex flex-col items-center justify-center gap-0.5 active:bg-slate-900 transition-colors disabled:opacity-40"
             >
-              {busy ? <Loader2 size={13} className="inline animate-spin" /> : 'Skip'}
+              {busy ? (
+                <Loader2 size={13} className="text-slate-400 animate-spin" />
+              ) : (
+                <>
+                  <span className="text-[9px] tracking-[0.22em] uppercase text-slate-200">Skip</span>
+                  <span className="text-[7px] tracking-[0.12em] uppercase text-slate-600">photo only</span>
+                </>
+              )}
             </button>
-            {/* Next */}
+            {/* Next — add optional details */}
             <button
               type="button"
               onClick={() => setFormStep(2)}
-              className="flex-[2] text-[8px] tracking-[0.22em] uppercase text-slate-300 flex items-center justify-center gap-2 bg-slate-950 active:bg-slate-900 transition-colors"
+              className="flex-1 text-[8px] tracking-[0.18em] uppercase text-slate-500 flex items-center justify-center gap-1.5 active:bg-slate-950 transition-colors"
             >
-              Next <ChevronRight size={11} strokeWidth={2} />
+              Details <ChevronRight size={10} strokeWidth={2} />
             </button>
           </>
         ) : (
