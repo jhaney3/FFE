@@ -3,17 +3,18 @@
 import { Fragment, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
-interface Totals { total: number; excellent: number; good: number; fair: number; poor: number; }
-interface ComboRow extends Totals { attributes: string[]; }
+export interface Totals { total: number; excellent: number; good: number; fair: number; poor: number; }
+export interface ComboRow extends Totals { attributes: string[]; }
 
-interface ParentGroup {
+export interface ParentGroup {
   parentAttr: string | null; // null = no parent level (flat fallback)
   totals: Totals;
   rows: ComboRow[];
 }
 
-interface TypeGroup {
+export interface TypeGroup {
   typeName: string;
+  typeId: string;
   typeTotal: Totals;
   hasParents: boolean;
   parentGroups: ParentGroup[];
@@ -31,7 +32,7 @@ function addTotals(a: Totals, b: Totals): Totals {
 
 const ZERO: Totals = { total: 0, excellent: 0, good: 0, fair: 0, poor: 0 };
 
-function buildGroups(items: any[], tagMeta: Map<string, boolean>): TypeGroup[] {
+export function buildGroups(items: any[], tagMeta: Map<string, boolean>): TypeGroup[] {
   // typeId → Set of parent attr names for that type
   const typesWithParents = new Set<string>();
   tagMeta.forEach((_, key) => {
@@ -103,7 +104,7 @@ function buildGroups(items: any[], tagMeta: Map<string, boolean>): TypeGroup[] {
 
       const typeTotal = parentGroups.reduce((acc, pg) => addTotals(acc, pg.totals), { ...ZERO });
 
-      return { typeName, typeTotal, hasParents: te.hasParents, parentGroups };
+      return { typeName, typeId: te.typeId, typeTotal, hasParents: te.hasParents, parentGroups };
     });
 }
 

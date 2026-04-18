@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useLowBandwidth } from '@/lib/BandwidthContext';
-import { Download, Filter, Search, Pencil, X, Check, Minus, Printer, Package, MoveRight } from 'lucide-react';
+import { Download, Filter, Search, Pencil, X, Check, Minus, Printer, Package, MoveRight, Monitor } from 'lucide-react';
 
 function Checkbox({ checked, indeterminate, onChange }: {
   checked: boolean;
@@ -234,6 +234,12 @@ export default function Dashboard() {
             <h1 className="text-2xl font-semibold text-gray-100 tracking-tight">FFE Catalog</h1>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => window.open('/presentation', '_blank')}
+              className="border border-gray-700 hover:border-gray-600 text-gray-400 hover:text-gray-200 px-4 py-2 font-mono text-[10px] tracking-[0.12em] uppercase flex items-center gap-2 transition-colors hover:bg-gray-900"
+            >
+              <Monitor size={13} /> Presentation
+            </button>
             <button
               onClick={openReport}
               className="border border-gray-700 hover:border-gray-600 text-gray-400 hover:text-gray-200 px-4 py-2 font-mono text-[10px] tracking-[0.12em] uppercase flex items-center gap-2 transition-colors hover:bg-gray-900"
