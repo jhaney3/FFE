@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
-import { ChevronRight, ChevronLeft, Maximize2, X } from 'lucide-react';
+import { ChevronRight, Maximize2, X } from 'lucide-react';
 import { buildSpotlightProps, type Spotlight } from '@/lib/buildSpotlightProps';
 
 const FloorPlanAnnotated = dynamic(
@@ -32,8 +32,9 @@ interface Props {
 
 export default function MapPanel({ isOpen, onToggle, filteredItems, tagMeta, spotlight, onPhotoClick }: Props) {
   const [activePlanId, setActivePlanId] = useState<string>('');
-  const [pageNumber,   setPageNumber]   = useState(1);
   const [expanded,     setExpanded]     = useState(false);
+  const [panelWidth,   setPanelWidth]   = useState(420);
+  const resizeState = useRef({ active: false, startX: 0, startWidth: 0 });
 
   // ESC closes the expanded lightbox
   useEffect(() => {
@@ -74,37 +75,40 @@ export default function MapPanel({ isOpen, onToggle, filteredItems, tagMeta, spo
     if (distinctPlans.length === 0) return;
     if (!distinctPlans.find(p => p.id === activePlanId)) {
       setActivePlanId(distinctPlans[0].id);
-      setPageNumber(1);
     }
   }, [distinctPlans, activePlanId]);
 
   const activePlan = distinctPlans.find(p => p.id === activePlanId) ?? distinctPlans[0] ?? null;
 
-  // Max page for the active plan
-  const maxPage = useMemo(() => {
-    if (!activePlanId) return 1;
+  // All page numbers for the active plan that have relevant items, sorted.
+  // When a spotlight is active, only include pages containing spotlighted items
+  // so we don't render unrelated PDF pages.
+  const allPageNumbers = useMemo(() => {
+    if (!activePlanId) return [1];
+    const source = (spotlight && spotlightItems.length > 0) ? spotlightItems : filteredItems;
     const pages = new Set<number>();
-    filteredItems.forEach(item => {
+    source.forEach(item => {
       if (item.Rooms?.FloorPlans?.id === activePlanId) pages.add(item.Rooms?.page_number || 1);
     });
-    return Math.max(...Array.from(pages), 1);
-  }, [filteredItems, activePlanId]);
+    const sorted = Array.from(pages).sort((a, b) => a - b);
+    return sorted.length > 0 ? sorted : [1];
+  }, [filteredItems, spotlightItems, spotlight, activePlanId]);
 
-  // Rooms on the current plan + page, deduplicated
-  const pageRooms = useMemo(() => {
+  // Rooms for a specific page on the active plan, deduplicated by room id
+  const getRoomsForPage = useCallback((page: number) => {
     if (!activePlanId) return [];
     const roomMap = new Map<string, any>();
     filteredItems.forEach(item => {
       if (
         item.Rooms?.FloorPlans?.id === activePlanId &&
-        (item.Rooms?.page_number || 1) === pageNumber &&
+        (item.Rooms?.page_number || 1) === page &&
         item.Rooms?.id
       ) {
         roomMap.set(item.Rooms.id, item.Rooms);
       }
     });
     return Array.from(roomMap.values());
-  }, [filteredItems, activePlanId, pageNumber]);
+  }, [filteredItems, activePlanId]);
 
   // Spotlight map props (only when spotlight is active)
   const spotProps = useMemo(() => {
@@ -117,14 +121,32 @@ export default function MapPanel({ isOpen, onToggle, filteredItems, tagMeta, spo
     return new Set<string>(filteredItems.map(i => i.room_id).filter(Boolean));
   }, [spotlight, spotProps, filteredItems]);
 
-  // ── Shared chrome: tab strip + page stepper ──────────────────────────────────
-  const TabStrip = () => distinctPlans.length > 1 ? (
-    <div className="flex shrink-0 border-b border-gray-800 overflow-x-auto">
+  // ── Panel resize (drag left edge) ────────────────────────────────────────────
+  const handleResizeStart = (e: React.PointerEvent) => {
+    e.preventDefault();
+    resizeState.current = { active: true, startX: e.clientX, startWidth: panelWidth };
+    (e.currentTarget as Element).setPointerCapture(e.pointerId);
+  };
+  const handleResizeMove = (e: React.PointerEvent) => {
+    if (!resizeState.current.active) return;
+    // Dragging left increases width (panel anchored to right)
+    const dx = resizeState.current.startX - e.clientX;
+    setPanelWidth(Math.min(900, Math.max(280, resizeState.current.startWidth + dx)));
+  };
+  const handleResizeEnd = (e: React.PointerEvent) => {
+    if (!resizeState.current.active) return;
+    resizeState.current.active = false;
+    (e.currentTarget as Element).releasePointerCapture(e.pointerId);
+  };
+
+  // ── Tab strip (shared between panel + lightbox) ───────────────────────────────
+  const TabStrip = ({ compact = false }: { compact?: boolean }) => distinctPlans.length > 1 ? (
+    <div className={`flex border-gray-800 overflow-x-auto ${compact ? 'border' : 'border-b shrink-0'}`}>
       {distinctPlans.map(plan => (
         <button
           key={plan.id}
-          onClick={() => { setActivePlanId(plan.id); setPageNumber(1); }}
-          className={`px-3 py-2 font-mono text-[10px] tracking-wider uppercase whitespace-nowrap transition-colors border-r border-gray-800 ${
+          onClick={() => setActivePlanId(plan.id)}
+          className={`px-3 py-1.5 font-mono text-[10px] tracking-wider uppercase whitespace-nowrap transition-colors border-r border-gray-800 last:border-r-0 ${
             activePlanId === plan.id
               ? 'text-blue-400 bg-blue-900/20'
               : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'
@@ -136,42 +158,46 @@ export default function MapPanel({ isOpen, onToggle, filteredItems, tagMeta, spo
     </div>
   ) : null;
 
-  const PageStepper = () => maxPage > 1 ? (
-    <div className="flex items-center justify-between px-4 py-1.5 border-b border-gray-800 shrink-0">
-      <button onClick={() => setPageNumber(p => Math.max(1, p - 1))} disabled={pageNumber <= 1}
-        className="text-gray-500 hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
-        <ChevronLeft size={14} />
-      </button>
-      <span className="font-mono text-[10px] text-gray-500">
-        Page <span className="text-gray-300">{pageNumber}</span> / {maxPage}
-      </span>
-      <button onClick={() => setPageNumber(p => Math.min(maxPage, p + 1))} disabled={pageNumber >= maxPage}
-        className="text-gray-500 hover:text-gray-300 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
-        <ChevronRight size={14} />
-      </button>
+  // ── Map content: all pages stacked ───────────────────────────────────────────
+  const MapContent = () => activePlan ? (
+    <div className="flex flex-col gap-8">
+      {allPageNumbers.map(page => {
+        const roomsForPage = getRoomsForPage(page);
+        return (
+          <div key={page}>
+            {(allPageNumbers.length > 1 || activePlan.page_labels?.[page]) && (
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex-1 h-px bg-gray-700" />
+                <span className="font-mono text-sm font-semibold text-gray-100 uppercase tracking-widest px-1">
+                  {activePlan.page_labels?.[page] || `Page ${page}`}
+                </span>
+                <div className="flex-1 h-px bg-gray-700" />
+              </div>
+            )}
+            {spotlight && spotProps ? (
+              <SpotlightMapView
+                floorPlan={activePlan}
+                pageRooms={roomsForPage}
+                activeRoomIds={activeRoomIds}
+                pageNum={page}
+                imageKey={spotProps.imageKey}
+                mapComboRoomCounts={spotProps.mapComboRoomCounts}
+                mapComboRooms={spotProps.mapComboRooms}
+                mapComboRoomConditions={spotProps.mapComboRoomConditions}
+                onPhotoClick={onPhotoClick}
+              />
+            ) : (
+              <FloorPlanAnnotated
+                floorPlan={activePlan}
+                rooms={roomsForPage}
+                activeRoomIds={activeRoomIds}
+                pageNumber={page}
+              />
+            )}
+          </div>
+        );
+      })}
     </div>
-  ) : null;
-
-  const MapContent = ({ className = '' }: { className?: string }) => activePlan ? (
-    spotlight && spotProps ? (
-      <SpotlightMapView
-        floorPlan={activePlan}
-        pageRooms={pageRooms}
-        activeRoomIds={activeRoomIds}
-        pageNum={pageNumber}
-        imageKey={spotProps.imageKey}
-        mapComboRoomCounts={spotProps.mapComboRoomCounts}
-        mapComboRooms={spotProps.mapComboRooms}
-        onPhotoClick={onPhotoClick}
-      />
-    ) : (
-      <FloorPlanAnnotated
-        floorPlan={activePlan}
-        rooms={pageRooms}
-        activeRoomIds={activeRoomIds}
-        pageNumber={pageNumber}
-      />
-    )
   ) : (
     <div className="flex items-center justify-center h-full text-gray-700 font-mono text-xs">
       No floor plan data
@@ -183,13 +209,24 @@ export default function MapPanel({ isOpen, onToggle, filteredItems, tagMeta, spo
       <div className="h-full shrink-0 relative">
         {/* Inner collapsing content */}
         <div
-          style={{ width: isOpen ? 420 : 0, transition: 'width 0.22s ease-in-out' }}
+          style={{ width: isOpen ? panelWidth : 0, transition: 'width 0.22s ease-in-out' }}
           className="h-full overflow-hidden"
         >
-          <div className="w-[420px] h-full bg-gray-900 border-l border-gray-800 flex flex-col overflow-hidden">
+          <div
+            style={{ width: panelWidth }}
+            className="h-full bg-gray-900 border-l border-gray-800 flex flex-col overflow-hidden relative"
+          >
+            {/* Resize handle — drag to adjust panel width */}
+            <div
+              className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize z-10 hover:bg-blue-500/40 active:bg-blue-500/60 transition-colors"
+              onPointerDown={handleResizeStart}
+              onPointerMove={handleResizeMove}
+              onPointerUp={handleResizeEnd}
+              onPointerCancel={handleResizeEnd}
+            />
 
             {/* Panel header */}
-            <div className="px-4 py-2.5 border-b border-gray-800 flex items-center justify-between shrink-0">
+            <div className="pl-3 pr-4 py-2.5 border-b border-gray-800 flex items-center justify-between shrink-0">
               <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-gray-500">Floor Plan</p>
               <div className="flex items-center gap-2">
                 {spotlight && (
@@ -210,9 +247,8 @@ export default function MapPanel({ isOpen, onToggle, filteredItems, tagMeta, spo
             </div>
 
             <TabStrip />
-            <PageStepper />
 
-            {/* Map view */}
+            {/* Map view — scrollable, all pages stacked */}
             <div className="flex-1 overflow-y-auto custom-scrollbar min-h-0 p-2">
               <MapContent />
             </div>
@@ -253,40 +289,7 @@ export default function MapPanel({ isOpen, onToggle, filteredItems, tagMeta, spo
               )}
             </div>
             <div className="flex items-center gap-3">
-              {/* Tab strip inline when expanded */}
-              {distinctPlans.length > 1 && (
-                <div className="flex border border-gray-800 overflow-x-auto">
-                  {distinctPlans.map(plan => (
-                    <button
-                      key={plan.id}
-                      onClick={() => { setActivePlanId(plan.id); setPageNumber(1); }}
-                      className={`px-3 py-1.5 font-mono text-[10px] tracking-wider uppercase whitespace-nowrap transition-colors border-r border-gray-800 last:border-r-0 ${
-                        activePlanId === plan.id
-                          ? 'text-blue-400 bg-blue-900/20'
-                          : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'
-                      }`}
-                    >
-                      {plan.name}
-                    </button>
-                  ))}
-                </div>
-              )}
-              {/* Page stepper inline when expanded */}
-              {maxPage > 1 && (
-                <div className="flex items-center gap-2">
-                  <button onClick={() => setPageNumber(p => Math.max(1, p - 1))} disabled={pageNumber <= 1}
-                    className="text-gray-500 hover:text-gray-300 disabled:opacity-30 transition-colors">
-                    <ChevronLeft size={14} />
-                  </button>
-                  <span className="font-mono text-[10px] text-gray-500">
-                    <span className="text-gray-300">{pageNumber}</span> / {maxPage}
-                  </span>
-                  <button onClick={() => setPageNumber(p => Math.min(maxPage, p + 1))} disabled={pageNumber >= maxPage}
-                    className="text-gray-500 hover:text-gray-300 disabled:opacity-30 transition-colors">
-                    <ChevronRight size={14} />
-                  </button>
-                </div>
-              )}
+              <TabStrip compact />
               <button
                 onClick={() => setExpanded(false)}
                 className="text-gray-500 hover:text-gray-100 transition-colors p-1 ml-2"
@@ -297,7 +300,7 @@ export default function MapPanel({ isOpen, onToggle, filteredItems, tagMeta, spo
             </div>
           </div>
 
-          {/* Map content — full remaining height */}
+          {/* Map content — full remaining height, all pages stacked */}
           <div
             className="flex-1 overflow-y-auto custom-scrollbar p-6 min-h-0"
             onClick={e => e.stopPropagation()}

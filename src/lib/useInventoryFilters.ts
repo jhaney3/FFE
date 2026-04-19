@@ -72,19 +72,33 @@ export function useInventoryFilters(items: any[], tagMeta: Map<string, boolean>)
   }, [parentFilteredItems, tagMeta]);
 
   // Full filter application
-  const filteredItems = useMemo(() => items.filter(item => {
-    if (typeFilter       && item.ItemTypes?.name        !== typeFilter)       return false;
-    if (parentAttrFilter && !(item.attributes || []).includes(parentAttrFilter)) return false;
-    if (childAttrFilter  && !(item.attributes || []).includes(childAttrFilter))  return false;
-    if (qualityFilter === 'Excellent' && (item.qty_excellent || 0) === 0) return false;
-    if (qualityFilter === 'Good'      && (item.qty_good      || 0) === 0) return false;
-    if (qualityFilter === 'Fair'      && (item.qty_fair      || 0) === 0) return false;
-    if (qualityFilter === 'Poor'      && (item.qty_poor      || 0) === 0) return false;
-    if (levelFilter    && item.Rooms?.level_name    !== levelFilter)    return false;
-    if (buildingFilter && item.Rooms?.building_name !== buildingFilter) return false;
-    if (roomTypeFilter && item.Rooms?.room_type     !== roomTypeFilter) return false;
-    return true;
-  }), [items, typeFilter, parentAttrFilter, childAttrFilter, qualityFilter, levelFilter, buildingFilter, roomTypeFilter]);
+  const filteredItems = useMemo(() => {
+    const base = items.filter(item => {
+      if (typeFilter       && item.ItemTypes?.name        !== typeFilter)       return false;
+      if (parentAttrFilter && !(item.attributes || []).includes(parentAttrFilter)) return false;
+      if (childAttrFilter  && !(item.attributes || []).includes(childAttrFilter))  return false;
+      if (qualityFilter === 'Excellent' && (item.qty_excellent || 0) === 0) return false;
+      if (qualityFilter === 'Good'      && (item.qty_good      || 0) === 0) return false;
+      if (qualityFilter === 'Fair'      && (item.qty_fair      || 0) === 0) return false;
+      if (qualityFilter === 'Poor'      && (item.qty_poor      || 0) === 0) return false;
+      if (levelFilter    && item.Rooms?.level_name    !== levelFilter)    return false;
+      if (buildingFilter && item.Rooms?.building_name !== buildingFilter) return false;
+      if (roomTypeFilter && item.Rooms?.room_type     !== roomTypeFilter) return false;
+      return true;
+    });
+
+    // When a condition filter is active, zero out the other condition quantities so
+    // downstream aggregations (table columns, map badge counts) only reflect the
+    // chosen condition — not a mix of all conditions on the same item.
+    if (!qualityFilter) return base;
+    return base.map(item => ({
+      ...item,
+      qty_excellent: qualityFilter === 'Excellent' ? (item.qty_excellent || 0) : 0,
+      qty_good:      qualityFilter === 'Good'      ? (item.qty_good      || 0) : 0,
+      qty_fair:      qualityFilter === 'Fair'      ? (item.qty_fair      || 0) : 0,
+      qty_poor:      qualityFilter === 'Poor'      ? (item.qty_poor      || 0) : 0,
+    }));
+  }, [items, typeFilter, parentAttrFilter, childAttrFilter, qualityFilter, levelFilter, buildingFilter, roomTypeFilter]);
 
   const activeFilterCount = [typeFilter, parentAttrFilter, childAttrFilter, qualityFilter, levelFilter, buildingFilter, roomTypeFilter].filter(Boolean).length;
 

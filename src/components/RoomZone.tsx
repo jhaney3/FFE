@@ -163,7 +163,6 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
   const [editingItem, setEditingItem]     = useState<any>(null);
   const [expandedWidth, setExpandedWidth] = useState(80);
   const [lightboxUrl, setLightboxUrl]     = useState<string | null>(null);
-  const [conditionFilter, setConditionFilter] = useState<'excellent' | 'good' | 'fair' | 'poor' | null>(null);
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const nameRef    = useRef<HTMLSpanElement | null>(null);
@@ -434,17 +433,6 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  // Condition summary + filter
-  const condTotals = {
-    excellent: items.reduce((s, i) => s + (i.qty_excellent || 0), 0),
-    good:      items.reduce((s, i) => s + (i.qty_good      || 0), 0),
-    fair:      items.reduce((s, i) => s + (i.qty_fair      || 0), 0),
-    poor:      items.reduce((s, i) => s + (i.qty_poor      || 0), 0),
-  };
-  const displayItems = conditionFilter
-    ? items.filter(item => (item[`qty_${conditionFilter}`] || 0) > 0)
-    : items;
-
   // Spotlight computation
   const spotlightActive = !!spotlightType;
   const spotlightCount = spotlightActive
@@ -657,49 +645,6 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
                     {room.building_name && <span className="flex items-center gap-1"><Building2 size={11} />{room.building_name}</span>}
                     {room.level_name    && <span className="flex items-center gap-1"><Layers    size={11} />{room.level_name}</span>}
                   </div>
-                  {/* Condition filter pills — click to filter item list */}
-                  {items.length > 0 && (condTotals.excellent + condTotals.good + condTotals.fair + condTotals.poor) > 0 && (() => {
-                    const cfgMap = {
-                      excellent: { dot: 'bg-green-400',  activeText: 'text-green-300',  activeBorder: 'border-green-600',  activeBg: 'bg-green-900/40',  label: 'Exc' },
-                      good:      { dot: 'bg-blue-400',   activeText: 'text-blue-300',   activeBorder: 'border-blue-600',   activeBg: 'bg-blue-900/40',   label: 'Gd'  },
-                      fair:      { dot: 'bg-yellow-400', activeText: 'text-yellow-300', activeBorder: 'border-yellow-600', activeBg: 'bg-yellow-900/40', label: 'Fair'},
-                      poor:      { dot: 'bg-red-400',    activeText: 'text-red-300',    activeBorder: 'border-red-600',    activeBg: 'bg-red-900/40',    label: 'Poor'},
-                    } as const;
-                    return (
-                      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                        <span className="font-mono text-[9px] uppercase tracking-wider text-gray-600 shrink-0">Cond:</span>
-                        {(['excellent', 'good', 'fair', 'poor'] as const).map(cond => {
-                          const count = condTotals[cond];
-                          if (!count) return null;
-                          const isActive = conditionFilter === cond;
-                          const cfg = cfgMap[cond];
-                          return (
-                            <button
-                              key={cond}
-                              title={`Show ${cfg.label} only`}
-                              onClick={() => setConditionFilter(c => c === cond ? null : cond)}
-                              className={`flex items-center gap-1 font-mono text-[10px] px-1.5 py-0.5 border transition-colors ${
-                                isActive
-                                  ? `${cfg.activeBg} ${cfg.activeBorder} ${cfg.activeText} font-bold`
-                                  : 'bg-gray-800/60 border-gray-700 text-gray-400 hover:border-gray-500 hover:text-gray-300'
-                              }`}
-                            >
-                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${cfg.dot}`} />
-                              {count} {cfg.label}
-                            </button>
-                          );
-                        })}
-                        {conditionFilter && (
-                          <button
-                            onClick={() => setConditionFilter(null)}
-                            className="font-mono text-[9px] text-gray-500 hover:text-gray-300 transition-colors border border-gray-700 hover:border-gray-500 px-1.5 py-0.5"
-                          >
-                            ✕ clear
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })()}
                 </div>
                 {room.room_type && (
                   <span className="font-mono text-[9px] uppercase tracking-[0.12em] px-2 py-0.5 border shrink-0 ml-2" style={{ color: dotColor, borderColor: `${dotColor}44`, backgroundColor: `${dotColor}11` }}>
@@ -710,7 +655,7 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
 
               {/* Item list */}
               <div className="flex-1 space-y-1.5 overflow-y-auto pr-1 min-h-0 custom-scrollbar">
-                {displayItems.length > 0 ? displayItems.map(item => (
+                {items.length > 0 ? items.map(item => (
                   <DraggableItemRow
                     key={item.id}
                     item={item}
@@ -725,9 +670,7 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
                 )) : (
                   <div className="text-center py-6 flex flex-col items-center gap-1.5">
                     <Package size={18} className="text-gray-700" />
-                    <p className="font-mono text-[10px] text-gray-600 tracking-wider uppercase">
-                      {conditionFilter ? 'No items match this condition' : 'No items assigned'}
-                    </p>
+                    <p className="font-mono text-[10px] text-gray-600 tracking-wider uppercase">No items assigned</p>
                   </div>
                 )}
               </div>

@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import RoomZone from '@/components/RoomZone';
 import PdfUploader from './PdfUploader';
 import NewZoneModal from './NewZoneModal';
-import { Layers, ShieldAlert, Trash2, ChevronLeft, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize, Package, Tag, SlidersHorizontal, MapPin, X } from 'lucide-react';
+import { Layers, ShieldAlert, Trash2, ChevronLeft, ChevronRight, ChevronDown, ZoomIn, ZoomOut, Maximize, Package, Tag, SlidersHorizontal, MapPin, X, Pencil } from 'lucide-react';
 import AssetSidebar from './AssetSidebar';
 import ItemTypeFilter from './ItemTypeFilter';
 import TagManagerModal from './TagManagerModal';
@@ -45,6 +45,8 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
   // PDF state
   const [numPages, setNumPages] = useState<number>(1);
   const [pageNumber, setPageNumber] = useState<number>(1);
+  const [editingPageLabel, setEditingPageLabel] = useState(false);
+  const [pageLabelDraft, setPageLabelDraft] = useState('');
 
   // Drawing state
   const [drawingZone, setDrawingZone] = useState<{ startX: number; startY: number; currentX: number; currentY: number } | null>(null);
@@ -142,6 +144,16 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
     } else {
       alert(error.message);
     }
+  };
+
+  const savePageLabel = async (label: string) => {
+    if (!activePlan) return;
+    const trimmed = label.trim();
+    const updated = { ...(activePlan.page_labels || {}), [pageNumber]: trimmed || undefined };
+    if (!trimmed) delete updated[pageNumber]; // empty string = remove label
+    await supabase.from('FloorPlans').update({ page_labels: updated }).eq('id', activePlanId);
+    setFloorPlans(prev => prev.map(p => p.id === activePlanId ? { ...p, page_labels: updated } : p));
+    setEditingPageLabel(false);
   };
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -495,25 +507,57 @@ export default function MapArea({ itemsVersion }: { itemsVersion?: number }) {
                 </button>
 
                 {/* Page switcher — bottom-center */}
-                {numPages > 1 && (
-                  <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-3 z-20 bg-gray-900 border border-gray-700 px-3 py-1.5 surface-raised">
-                    <button
-                      disabled={pageNumber <= 1}
-                      onClick={() => setPageNumber(prev => prev - 1)}
-                      className="text-gray-500 disabled:opacity-25 hover:text-gray-200 transition-colors"
-                    >
-                      <ChevronLeft size={14}/>
-                    </button>
-                    <span className="font-mono text-[10px] text-gray-400 tabular-nums tracking-wider">{pageNumber} / {numPages}</span>
-                    <button
-                      disabled={pageNumber >= numPages}
-                      onClick={() => setPageNumber(prev => prev + 1)}
-                      className="text-gray-500 disabled:opacity-25 hover:text-gray-200 transition-colors"
-                    >
-                      <ChevronRight size={14}/>
-                    </button>
-                  </div>
-                )}
+                {numPages > 1 && (() => {
+                  const currentLabel = activePlan?.page_labels?.[pageNumber] || '';
+                  return (
+                    <div className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-2 z-20 bg-gray-900 border border-gray-700 px-3 py-1.5 surface-raised">
+                      <button
+                        disabled={pageNumber <= 1}
+                        onClick={() => { setPageNumber(prev => prev - 1); setEditingPageLabel(false); }}
+                        className="text-gray-500 disabled:opacity-25 hover:text-gray-200 transition-colors"
+                      >
+                        <ChevronLeft size={14}/>
+                      </button>
+
+                      {/* Label / inline editor */}
+                      <div className="flex items-center gap-1.5 min-w-[120px] justify-center">
+                        {editingPageLabel ? (
+                          <input
+                            autoFocus
+                            value={pageLabelDraft}
+                            onChange={e => setPageLabelDraft(e.target.value)}
+                            onKeyDown={e => { if (e.key === 'Enter') savePageLabel(pageLabelDraft); if (e.key === 'Escape') setEditingPageLabel(false); }}
+                            onBlur={() => savePageLabel(pageLabelDraft)}
+                            placeholder={`Page ${pageNumber}`}
+                            className="w-32 bg-gray-800 border border-blue-600 text-gray-100 font-mono text-[10px] px-1.5 py-0.5 outline-none text-center"
+                          />
+                        ) : (
+                          <>
+                            <span className="font-mono text-[10px] text-gray-300 tabular-nums tracking-wider">
+                              {currentLabel || `Page ${pageNumber}`}
+                              <span className="text-gray-600 ml-1">({pageNumber}/{numPages})</span>
+                            </span>
+                            <button
+                              onClick={() => { setPageLabelDraft(currentLabel); setEditingPageLabel(true); }}
+                              title="Edit page label"
+                              className="text-gray-600 hover:text-gray-300 transition-colors"
+                            >
+                              <Pencil size={10}/>
+                            </button>
+                          </>
+                        )}
+                      </div>
+
+                      <button
+                        disabled={pageNumber >= numPages}
+                        onClick={() => { setPageNumber(prev => prev + 1); setEditingPageLabel(false); }}
+                        className="text-gray-500 disabled:opacity-25 hover:text-gray-200 transition-colors"
+                      >
+                        <ChevronRight size={14}/>
+                      </button>
+                    </div>
+                  );
+                })()}
 
                 <TransformComponent wrapperClass="!w-full !h-full" contentClass="!w-full !h-full flex justify-center items-center">
                   <div 

@@ -37,7 +37,7 @@ function PresentationContent() {
           ItemTypes ( name ),
           Rooms (
             id, name, level_name, building_name, room_type, page_number, map_coordinates,
-            FloorPlans ( id, name, image_url )
+            FloorPlans ( id, name, image_url, page_labels )
           )
         `)
         .order('created_at', { ascending: false });

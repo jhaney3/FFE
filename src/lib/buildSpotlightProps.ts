@@ -6,10 +6,13 @@ export interface Spotlight {
   attrCombo: string | null;   // null = all combos (full sorted comma-joined string, e.g. "Adult, Black")
 }
 
+export interface CondBreakdown { excellent: number; good: number; fair: number; poor: number; }
+
 export interface SpotlightProps {
   imageKey: ImageKeyEntry[];
   mapComboRoomCounts: Record<string, Record<string, number>>;
   mapComboRooms: Record<string, string[]>;
+  mapComboRoomConditions: Record<string, Record<string, CondBreakdown>>;
   activeRoomIds: Set<string>;
 }
 
@@ -28,6 +31,7 @@ export function buildSpotlightProps(
   const keyMap = new Map<string, ImageKeyEntry>();
   const comboRooms: Record<string, string[]> = {};
   const comboRoomCounts: Record<string, Record<string, number>> = {};
+  const comboRoomConditions: Record<string, Record<string, CondBreakdown>> = {};
 
   for (const item of items) {
     const typeName = item.ItemTypes?.name;
@@ -74,12 +78,18 @@ export function buildSpotlightProps(
       }
     }
 
-    // label → rooms + per-room counts (spotlight only, non-zero qty)
+    // label → rooms + per-room counts + per-room condition breakdown (spotlight only, non-zero qty)
     if (spotlightType && qty > 0 && item.room_id) {
       if (!comboRooms[label]) comboRooms[label] = [];
       if (!comboRooms[label].includes(item.room_id)) comboRooms[label].push(item.room_id);
       if (!comboRoomCounts[label]) comboRoomCounts[label] = {};
       comboRoomCounts[label][item.room_id] = (comboRoomCounts[label][item.room_id] || 0) + qty;
+      if (!comboRoomConditions[label]) comboRoomConditions[label] = {};
+      if (!comboRoomConditions[label][item.room_id]) comboRoomConditions[label][item.room_id] = { excellent: 0, good: 0, fair: 0, poor: 0 };
+      comboRoomConditions[label][item.room_id].excellent += item.qty_excellent || 0;
+      comboRoomConditions[label][item.room_id].good      += item.qty_good      || 0;
+      comboRoomConditions[label][item.room_id].fair      += item.qty_fair      || 0;
+      comboRoomConditions[label][item.room_id].poor      += item.qty_poor      || 0;
     }
   }
 
@@ -87,6 +97,7 @@ export function buildSpotlightProps(
     imageKey: Array.from(keyMap.values()).sort((a, b) => a.label.localeCompare(b.label)),
     mapComboRoomCounts: comboRoomCounts,
     mapComboRooms: comboRooms,
+    mapComboRoomConditions: comboRoomConditions,
     activeRoomIds,
   };
 }

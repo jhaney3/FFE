@@ -9,6 +9,7 @@ CREATE TABLE "FloorPlans" (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name VARCHAR(255) NOT NULL, -- e.g., 'Upper Level', 'Lower Level'
     image_url TEXT NOT NULL,
+    page_labels JSONB DEFAULT '{}' NOT NULL, -- e.g. {"1":"Ground Floor","2":"First Floor"}
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 

@@ -1,8 +1,10 @@
 'use client';
 
 import { useRef, useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { Package } from 'lucide-react';
+import { type CondBreakdown } from '@/lib/buildSpotlightProps';
 
 const FloorPlanAnnotated = dynamic(
   () => import('./FloorPlanAnnotated'),
@@ -35,6 +37,8 @@ interface Props {
   // comboLabel → { roomId → count }
   mapComboRoomCounts: Record<string, Record<string, number>>;
   mapComboRooms: Record<string, string[]>;
+  // comboLabel → { roomId → condition breakdown }
+  mapComboRoomConditions: Record<string, Record<string, CondBreakdown>>;
   onPhotoClick?: (url: string) => void;
 }
 
@@ -45,15 +49,23 @@ interface Props {
 // all dimensions uniformly, preserving ratios).
 interface LineSpec { x1: number; y1: number; x2: number; y2: number; color: string; }
 
+interface ActiveBadge {
+  comboLabel: string;
+  roomId: string;
+  clientX: number;
+  clientY: number;
+}
+
 export default function SpotlightMapView({
   floorPlan, pageRooms, activeRoomIds, pageNum,
-  imageKey, mapComboRoomCounts, mapComboRooms, onPhotoClick,
+  imageKey, mapComboRoomCounts, mapComboRooms, mapComboRoomConditions, onPhotoClick,
 }: Props) {
   const outerRef  = useRef<HTMLDivElement>(null);
   const keyRefs   = useRef<(HTMLDivElement | null)[]>([]);
   const fpWrapRef = useRef<HTMLDivElement>(null);
   const [lines, setLines]                   = useState<LineSpec[]>([]);
   const [badgePositions, setBadgePositions] = useState<Map<string, { x: number; y: number }>>(new Map());
+  const [activeBadge, setActiveBadge]       = useState<ActiveBadge | null>(null);
 
   const measure = useCallback(() => {
     if (!outerRef.current || !fpWrapRef.current) return;
@@ -155,14 +167,22 @@ export default function SpotlightMapView({
 
   useEffect(() => { measure(); }, [measure]);
 
-  // Collect badges for each room: [ { color, count } ] ordered by imageKey index
-  const roomBadgeMap = new Map<string, { color: string; count: number }[]>();
+  // Close condition tooltip on ESC
+  useEffect(() => {
+    if (!activeBadge) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setActiveBadge(null); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [activeBadge]);
+
+  // Collect badges for each room: [ { color, count, label } ] ordered by imageKey index
+  const roomBadgeMap = new Map<string, { color: string; count: number; label: string }[]>();
   pageRooms.forEach(room => {
     if (!activeRoomIds.has(room.id)) return;
-    const badges: { color: string; count: number }[] = [];
+    const badges: { color: string; count: number; label: string }[] = [];
     imageKey.forEach((entry, i) => {
       const count = mapComboRoomCounts[entry.label]?.[room.id];
-      if (count) badges.push({ color: SPOTLIGHT_COLORS[i % SPOTLIGHT_COLORS.length], count });
+      if (count) badges.push({ color: SPOTLIGHT_COLORS[i % SPOTLIGHT_COLORS.length], count, label: entry.label });
     });
     if (badges.length > 0) roomBadgeMap.set(room.id, badges);
   });
@@ -294,9 +314,18 @@ export default function SpotlightMapView({
               const angle = badges.length === 1 ? 0 : (bi / badges.length) * 2 * Math.PI - Math.PI / 2;
               const bx = pos?.x ?? (cx + spread * Math.cos(angle));
               const by = pos?.y ?? (cy + spread * Math.sin(angle));
-              return (
+              const isActive = activeBadge?.comboLabel === badge.label && activeBadge?.roomId === room.id;
+            return (
                 <div
                   key={key}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setActiveBadge(prev =>
+                      prev?.comboLabel === badge.label && prev?.roomId === room.id
+                        ? null
+                        : { comboLabel: badge.label, roomId: room.id, clientX: e.clientX, clientY: e.clientY }
+                    );
+                  }}
                   style={{
                     position: 'absolute',
                     left: `${bx}%`,
@@ -305,17 +334,17 @@ export default function SpotlightMapView({
                     display: 'flex',
                     alignItems: 'center',
                     gap: 3,
-                    background: 'white',
+                    background: isActive ? badge.color : 'white',
                     border: `1.5px solid ${badge.color}`,
                     borderRadius: 999,
                     padding: '1px 5px 1px 3px',
                     fontSize: 10,
                     fontWeight: 700,
-                    color: '#1e293b',
+                    color: isActive ? 'white' : '#1e293b',
                     lineHeight: 1.5,
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
+                    boxShadow: isActive ? `0 0 0 2px ${badge.color}44, 0 2px 6px rgba(0,0,0,0.4)` : '0 1px 3px rgba(0,0,0,0.3)',
                     whiteSpace: 'nowrap',
-                    pointerEvents: 'none',
+                    cursor: 'pointer',
                     zIndex: 20,
                     WebkitPrintColorAdjust: 'exact',
                     printColorAdjust: 'exact',
@@ -335,6 +364,80 @@ export default function SpotlightMapView({
         }
       </div>
 
+      {/* ── Condition breakdown tooltip ── */}
+      {activeBadge && typeof document !== 'undefined' && createPortal(
+        <>
+          {/* Transparent backdrop to close on click-outside */}
+          <div className="fixed inset-0 z-[10002]" onClick={() => setActiveBadge(null)} />
+          <ConditionTooltip
+            badge={activeBadge}
+            conds={mapComboRoomConditions[activeBadge.comboLabel]?.[activeBadge.roomId]}
+            roomName={pageRooms.find(r => r.id === activeBadge.roomId)?.name ?? ''}
+            onClose={() => setActiveBadge(null)}
+          />
+        </>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+function ConditionTooltip({ badge, conds, roomName, onClose }: {
+  badge: ActiveBadge;
+  conds: CondBreakdown | undefined;
+  roomName: string;
+  onClose: () => void;
+}) {
+  const rows = [
+    { key: 'excellent', label: 'Excellent', dot: '#4ade80', val: conds?.excellent ?? 0 },
+    { key: 'good',      label: 'Good',      dot: '#60a5fa', val: conds?.good      ?? 0 },
+    { key: 'fair',      label: 'Fair',      dot: '#facc15', val: conds?.fair      ?? 0 },
+    { key: 'poor',      label: 'Poor',      dot: '#f87171', val: conds?.poor      ?? 0 },
+  ].filter(r => r.val > 0);
+
+  // Position: above the click point; flip below if near top of screen
+  const above = badge.clientY > 160;
+  const left  = Math.min(Math.max(80, badge.clientX), (typeof window !== 'undefined' ? window.innerWidth : 800) - 80);
+  const top   = badge.clientY;
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        left,
+        top,
+        transform: above ? 'translate(-50%, calc(-100% - 10px))' : 'translate(-50%, 10px)',
+        zIndex: 10003,
+      }}
+      onClick={e => e.stopPropagation()}
+      className="bg-gray-900 border border-gray-700 shadow-2xl p-3 min-w-[150px]"
+    >
+      {/* Arrow */}
+      {above && (
+        <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full">
+          <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[6px] border-l-transparent border-r-transparent border-t-gray-700" />
+        </div>
+      )}
+      {!above && (
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full">
+          <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-b-[6px] border-l-transparent border-r-transparent border-b-gray-700" />
+        </div>
+      )}
+
+      <p className="font-mono text-[9px] uppercase tracking-wider text-gray-500 mb-0.5">{roomName}</p>
+      <p className="font-mono text-[11px] font-semibold text-gray-200 mb-2 leading-tight">{badge.comboLabel}</p>
+
+      <div className="flex flex-col gap-1">
+        {rows.map(r => (
+          <div key={r.key} className="flex items-center justify-between gap-4">
+            <span className="flex items-center gap-1.5 font-mono text-[10px] text-gray-400">
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ background: r.dot }} />
+              {r.label}
+            </span>
+            <span className="font-mono text-[11px] font-bold text-gray-100">{r.val}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
