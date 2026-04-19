@@ -51,8 +51,9 @@ function ReportContent() {
   const [mapRooms, setMapRooms]                 = useState<any[]>([]);
   const [mapActiveRoomIds, setMapActiveRoomIds] = useState<Set<string>>(new Set());
   const [imageKey, setImageKey]                 = useState<ImageKeyEntry[]>([]);
-  const [mapComboRoomCounts, setMapComboRoomCounts] = useState<Record<string, Record<string, number>>>({});
-  const [mapComboRooms, setMapComboRooms]           = useState<Record<string, string[]>>({});
+  const [mapComboRoomCounts, setMapComboRoomCounts]           = useState<Record<string, Record<string, number>>>({});
+  const [mapComboRooms, setMapComboRooms]                     = useState<Record<string, string[]>>({});
+  const [mapComboRoomConditions, setMapComboRoomConditions]   = useState<Record<string, Record<string, { excellent: number; good: number; fair: number; poor: number }>>>({});
 
   const mapOnly         = searchParams.get('mapOnly') === 'true';
   const floorplanId     = searchParams.get('floorplan') || '';
@@ -122,9 +123,10 @@ function ReportContent() {
           }
 
           // Image key + combo→rooms map (single pass)
-          const keyMap            = new Map<string, ImageKeyEntry>();
-          const comboRooms:      Record<string, string[]>            = {};
-          const comboRoomCounts: Record<string, Record<string, number>> = {};
+          const keyMap              = new Map<string, ImageKeyEntry>();
+          const comboRooms:         Record<string, string[]>            = {};
+          const comboRoomCounts:    Record<string, Record<string, number>> = {};
+          const comboRoomConditions: Record<string, Record<string, { excellent: number; good: number; fair: number; poor: number }>> = {};
 
           for (const item of allItems) {
             const typeName = item.ItemTypes?.name;
@@ -168,19 +170,27 @@ function ReportContent() {
               }
             }
 
-            // label → rooms + per-room counts (spotlight only, non-zero qty)
+            // label → rooms + per-room counts + per-room condition breakdown (spotlight only, non-zero qty)
             if (spotlightType && qty > 0) {
               if (!comboRooms[label]) comboRooms[label] = [];
               if (!comboRooms[label].includes(item.room_id)) comboRooms[label].push(item.room_id);
 
               if (!comboRoomCounts[label]) comboRoomCounts[label] = {};
               comboRoomCounts[label][item.room_id] = (comboRoomCounts[label][item.room_id] || 0) + qty;
+
+              if (!comboRoomConditions[label]) comboRoomConditions[label] = {};
+              if (!comboRoomConditions[label][item.room_id]) comboRoomConditions[label][item.room_id] = { excellent: 0, good: 0, fair: 0, poor: 0 };
+              comboRoomConditions[label][item.room_id].excellent += item.qty_excellent || 0;
+              comboRoomConditions[label][item.room_id].good      += item.qty_good      || 0;
+              comboRoomConditions[label][item.room_id].fair      += item.qty_fair      || 0;
+              comboRoomConditions[label][item.room_id].poor      += item.qty_poor      || 0;
             }
           }
 
           setImageKey(Array.from(keyMap.values()).sort((a, b) => a.label.localeCompare(b.label)));
           setMapComboRooms(comboRooms);
           setMapComboRoomCounts(comboRoomCounts);
+          setMapComboRoomConditions(comboRoomConditions);
         }
       } else {
         const { data: rawItems } = await supabase
@@ -272,6 +282,7 @@ function ReportContent() {
                 imageKey={imageKey}
                 mapComboRoomCounts={mapComboRoomCounts}
                 mapComboRooms={mapComboRooms}
+                mapComboRoomConditions={mapComboRoomConditions}
               />
             ) : (
               <FloorPlanAnnotated
