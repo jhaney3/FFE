@@ -141,8 +141,119 @@ function PresentationContent() {
     );
   }
 
+  const activeFilterLabels = [
+    typeFilter       && `Type: ${typeFilter}`,
+    parentAttrFilter && `Group: ${parentAttrFilter}`,
+    childAttrFilter  && `Attr: ${childAttrFilter}`,
+    qualityFilter    && `Condition: ${qualityFilter}`,
+    levelFilter      && `Level: ${levelFilter}`,
+    buildingFilter   && `Building: ${buildingFilter}`,
+    roomTypeFilter   && `Room Type: ${roomTypeFilter}`,
+  ].filter(Boolean) as string[];
+
+  const printDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
   return (
     <div className="bg-gray-950 h-screen flex flex-col overflow-hidden text-gray-100 print-expand">
+
+      {/* ── Print styles ────────────────────────────────────────────────────────── */}
+      <style>{`
+        @media print {
+          @page { margin: 1.8cm 2cm; size: letter portrait; }
+
+          body { background: white !important; color: black !important; }
+
+          /* Show the print-only header */
+          .ffe-print-header { display: block !important; }
+
+          /* Un-sticky the thead */
+          .ffe-thead { position: static !important; }
+
+          /* Column headers */
+          .ffe-thead th {
+            background: #e4e4e4 !important;
+            color: black !important;
+            border-top: 2px solid #222 !important;
+            border-bottom: 2px solid #222 !important;
+            padding: 5pt 8pt !important;
+            font-size: 8pt !important;
+            font-weight: bold !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.1em !important;
+          }
+
+          /* Repeat header on every page */
+          thead { display: table-header-group !important; }
+          tbody { display: table-row-group !important; }
+          tr    { page-break-inside: avoid !important; }
+
+          /* Group separator */
+          .ffe-divider td {
+            background: #aaa !important;
+            height: 1.5pt !important;
+            padding: 0 !important;
+          }
+
+          /* Type header rows */
+          .ffe-type-row {
+            background: #efefef !important;
+            border-left: none !important;
+            border-bottom: 1px solid #ccc !important;
+          }
+          .ffe-type-row td {
+            color: black !important;
+            font-weight: bold !important;
+            padding: 5pt 8pt !important;
+          }
+
+          /* Parent group rows */
+          .ffe-parent-row {
+            background: white !important;
+            border-left: none !important;
+            border-bottom: 1px solid #e0e0e0 !important;
+          }
+          .ffe-parent-row td {
+            color: #222 !important;
+            font-weight: 600 !important;
+            padding: 4pt 8pt !important;
+          }
+
+          /* Child combo rows */
+          .ffe-child-row {
+            background: white !important;
+            border-left: none !important;
+            border-bottom: 1px solid #eee !important;
+          }
+          .ffe-child-row td {
+            color: #333 !important;
+            padding: 3pt 8pt !important;
+          }
+
+          /* All table numbers → black (overrides green/blue/yellow/red) */
+          .ffe-print-table td, .ffe-print-table th {
+            color: black !important;
+          }
+
+          /* Condition totals — distinguish by weight, not color */
+          .ffe-type-row td:nth-child(n+3),
+          .ffe-parent-row td:nth-child(n+3),
+          .ffe-child-row td:nth-child(n+3) {
+            color: #111 !important;
+          }
+
+          /* Last column (Total) always bold */
+          .ffe-print-table td:last-child {
+            font-weight: bold !important;
+          }
+
+          /* Table layout */
+          .ffe-print-table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+            font-size: 10pt !important;
+          }
+        }
+      `}</style>
 
       {/* ── Header bar ─────────────────────────────────────────────────────────── */}
       <header className="no-print flex items-center justify-between px-5 py-2.5 border-b border-gray-800 bg-gray-950 shrink-0 gap-4">
@@ -265,6 +376,24 @@ function PresentationContent() {
 
         {/* Table area */}
         <div className="flex-1 overflow-y-auto custom-scrollbar min-w-0 print-expand">
+
+          {/* ── Print-only title block (hidden on screen) ─────────────────────── */}
+          <div className="ffe-print-header hidden px-8 pt-6 pb-4 border-b border-gray-800" style={{ fontFamily: 'serif' }}>
+            <div style={{ fontSize: '18pt', fontWeight: 'bold', color: 'black', marginBottom: '4pt' }}>
+              FFE Catalog — Inventory Report
+            </div>
+            <div style={{ fontSize: '9pt', color: '#444', marginBottom: activeFilterLabels.length > 0 ? '6pt' : '0' }}>
+              Printed {printDate}
+            </div>
+            {activeFilterLabels.length > 0 && (
+              <div style={{ fontSize: '9pt', color: '#333' }}>
+                <span style={{ fontWeight: 'bold' }}>Filters: </span>
+                {activeFilterLabels.join(' · ')}
+              </div>
+            )}
+            <div style={{ marginTop: '10pt', borderBottom: '2px solid #222' }} />
+          </div>
+
           <InteractiveTable
             typeGroups={typeGroups}
             tagMeta={tagMeta}

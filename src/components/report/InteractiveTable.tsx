@@ -39,8 +39,8 @@ export default function InteractiveTable({ typeGroups, tagMeta, spotlight, onSpo
   }
 
   return (
-    <table className="w-full border-collapse text-sm">
-      <thead className="sticky top-0 z-10">
+    <table className="ffe-print-table w-full border-collapse text-sm">
+      <thead className="ffe-thead sticky top-0 z-10">
         <tr className="bg-gray-950 border-b border-gray-800">
           <th className="px-4 py-2.5 text-left font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500 w-[180px]">Type</th>
           <th className="px-4 py-2.5 text-left font-mono text-[10px] tracking-[0.15em] uppercase text-gray-500">Attrs</th>
@@ -64,7 +64,7 @@ export default function InteractiveTable({ typeGroups, tagMeta, spotlight, onSpo
           return (
             <Fragment key={typeName}>
               {gi > 0 && (
-                <tr>
+                <tr className="ffe-divider">
                   <td colSpan={7} className="p-0 h-px bg-gray-800" />
                 </tr>
               )}
@@ -72,7 +72,7 @@ export default function InteractiveTable({ typeGroups, tagMeta, spotlight, onSpo
               {/* ── Type header row ── */}
               <tr
                 onClick={handleTypeClick}
-                className={`cursor-pointer border-l-2 transition-colors ${
+                className={`ffe-type-row cursor-pointer border-l-2 transition-colors ${
                   typeActive
                     ? 'bg-blue-600/10 border-l-blue-500'
                     : 'bg-gray-900 border-l-transparent hover:bg-gray-800/60 hover:border-l-gray-700'
@@ -107,7 +107,7 @@ export default function InteractiveTable({ typeGroups, tagMeta, spotlight, onSpo
                     {(parentGroups.length > 1 || pg.parentAttr) && (
                       <tr
                         onClick={handleParentClick}
-                        className={`cursor-pointer border-l-2 transition-colors ${
+                        className={`ffe-parent-row cursor-pointer border-l-2 transition-colors ${
                           parentActive
                             ? 'bg-blue-600/10 border-l-blue-500'
                             : 'bg-gray-900/40 border-l-transparent hover:bg-gray-800/40 hover:border-l-gray-700'
@@ -142,7 +142,7 @@ export default function InteractiveTable({ typeGroups, tagMeta, spotlight, onSpo
                         <tr
                           key={ri}
                           onClick={handleComboClick}
-                          className={`cursor-pointer border-l-2 border-b border-b-gray-800/30 transition-colors ${
+                          className={`ffe-child-row cursor-pointer border-l-2 border-b border-b-gray-800/30 transition-colors ${
                             comboActive
                               ? 'bg-blue-600/10 border-l-blue-500'
                               : 'bg-gray-900 border-l-transparent hover:bg-gray-800/40 hover:border-l-gray-700'
@@ -181,7 +181,7 @@ export default function InteractiveTable({ typeGroups, tagMeta, spotlight, onSpo
                   <tr
                     key={ri}
                     onClick={handleComboClick}
-                    className={`cursor-pointer border-l-2 border-b border-b-gray-800/30 transition-colors ${
+                    className={`ffe-child-row cursor-pointer border-l-2 border-b border-b-gray-800/30 transition-colors ${
                       comboActive
                         ? 'bg-blue-600/10 border-l-blue-500'
                         : 'bg-gray-900 border-l-transparent hover:bg-gray-800/40 hover:border-l-gray-700'
