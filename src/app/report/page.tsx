@@ -230,7 +230,7 @@ function ReportContent() {
       : null;
 
     return (
-      <div className="bg-white h-screen overflow-y-auto text-gray-900 print-expand" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <div className="bg-white text-gray-900" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
         <style>{`
           @media print {
             .no-print { display: none !important; }
@@ -315,7 +315,7 @@ function ReportContent() {
   ].filter(Boolean) as string[];
 
   return (
-    <div className="bg-white h-screen overflow-y-auto text-gray-900 print-expand" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+    <div className="bg-white text-gray-900" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       <style>{`
         @media print {
           @page { margin: 1.5cm 2cm; }
