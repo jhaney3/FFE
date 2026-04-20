@@ -142,10 +142,10 @@ function PresentationContent() {
   }
 
   return (
-    <div className="bg-gray-950 h-screen flex flex-col overflow-hidden text-gray-100">
+    <div className="bg-gray-950 h-screen flex flex-col overflow-hidden text-gray-100 print-expand">
 
       {/* ── Header bar ─────────────────────────────────────────────────────────── */}
-      <header className="flex items-center justify-between px-5 py-2.5 border-b border-gray-800 bg-gray-950 shrink-0 gap-4">
+      <header className="no-print flex items-center justify-between px-5 py-2.5 border-b border-gray-800 bg-gray-950 shrink-0 gap-4">
         <div>
           <p className="font-mono text-[10px] tracking-[0.18em] uppercase text-gray-500 leading-none mb-0.5">
             Inventory Registry
@@ -180,7 +180,7 @@ function PresentationContent() {
       </header>
 
       {/* ── Filter bar ─────────────────────────────────────────────────────────── */}
-      <div className="px-5 py-3 border-b border-gray-800 bg-gray-900/30 shrink-0 space-y-2.5">
+      <div className="no-print px-5 py-3 border-b border-gray-800 bg-gray-900/30 shrink-0 space-y-2.5">
         {/* Primary filters */}
         <div className="flex items-end gap-3 flex-wrap">
           <div>
@@ -261,10 +261,10 @@ function PresentationContent() {
       </div>
 
       {/* ── Main content ───────────────────────────────────────────────────────── */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden print-expand">
 
         {/* Table area */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar min-w-0">
+        <div className="flex-1 overflow-y-auto custom-scrollbar min-w-0 print-expand">
           <InteractiveTable
             typeGroups={typeGroups}
             tagMeta={tagMeta}
@@ -273,15 +273,17 @@ function PresentationContent() {
           />
         </div>
 
-        {/* Map panel */}
-        <MapPanel
-          isOpen={mapOpen}
-          onToggle={() => setMapOpen(o => !o)}
-          filteredItems={filteredItems}
-          tagMeta={tagMeta}
-          spotlight={spotlight}
-          onPhotoClick={url => setLightboxUrl(url)}
-        />
+        {/* Map panel — hidden in print */}
+        <div className="no-print">
+          <MapPanel
+            isOpen={mapOpen}
+            onToggle={() => setMapOpen(o => !o)}
+            filteredItems={filteredItems}
+            tagMeta={tagMeta}
+            spotlight={spotlight}
+            onPhotoClick={url => setLightboxUrl(url)}
+          />
+        </div>
       </div>
 
       {lightboxUrl && (
