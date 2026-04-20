@@ -27,7 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" className={`dark ${ibmPlexSans.variable} ${ibmPlexMono.variable}`}>
       <body className={`${ibmPlexSans.className} h-screen overflow-hidden flex flex-col bg-gray-950 text-gray-100`}>
         {/* 2px top accent — signature corporate stripe */}
-        <div className="h-[2px] w-full bg-blue-500 shrink-0" />
+        <div className="no-print h-[2px] w-full bg-blue-500 shrink-0" />
         <ProjectProvider>{children}</ProjectProvider>
       </body>
     </html>

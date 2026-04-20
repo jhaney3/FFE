@@ -115,10 +115,12 @@ input[type="number"]:focus::-webkit-outer-spin-button {
 
 /* ── Print ───────────────────────────────────────────────────────────────── */
 @media print {
-  /* Force document height to auto so h-screen containers don't create a blank first page */
+  /* Force document layout flat so the flex h-screen body doesn't create a blank first page */
   html, body {
     height: auto !important;
+    min-height: 0 !important;
     overflow: visible !important;
+    display: block !important;
     margin: 0 !important;
     padding: 0 !important;
   }
