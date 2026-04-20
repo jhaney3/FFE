@@ -318,6 +318,8 @@ function ReportContent() {
     <div className="bg-white h-screen overflow-y-auto text-gray-900 print-expand" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
       <style>{`
         @media print {
+          @page { margin: 1.5cm 2cm; }
+          @page :first { margin-top: 1.5cm; }
           .no-print { display: none !important; }
           body { font-size: 11pt; }
           table { page-break-inside: avoid; }

@@ -115,6 +115,14 @@ input[type="number"]:focus::-webkit-outer-spin-button {
 
 /* ── Print ───────────────────────────────────────────────────────────────── */
 @media print {
+  /* Force document height to auto so h-screen containers don't create a blank first page */
+  html, body {
+    height: auto !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
   /* Hide scrollbars */
   *::-webkit-scrollbar { display: none !important; }
   * { scrollbar-width: none !important; }
