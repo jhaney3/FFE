@@ -185,6 +185,7 @@ export default function MapPanel({ isOpen, onToggle, filteredItems, tagMeta, spo
                 mapComboRooms={spotProps.mapComboRooms}
                 mapComboRoomConditions={spotProps.mapComboRoomConditions}
                 onPhotoClick={onPhotoClick}
+                spotlightItems={spotlightItems}
               />
             ) : (
               <FloorPlanAnnotated

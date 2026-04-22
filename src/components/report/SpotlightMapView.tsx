@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
-import { Package } from 'lucide-react';
+import { Package, X } from 'lucide-react';
 import { type CondBreakdown } from '@/lib/buildSpotlightProps';
 
 const FloorPlanAnnotated = dynamic(
@@ -40,6 +40,7 @@ interface Props {
   // comboLabel → { roomId → condition breakdown }
   mapComboRoomConditions: Record<string, Record<string, CondBreakdown>>;
   onPhotoClick?: (url: string) => void;
+  spotlightItems?: any[];
 }
 
 // All coordinates are expressed as percentages of the outerRef container (0–100).
@@ -59,6 +60,7 @@ interface ActiveBadge {
 export default function SpotlightMapView({
   floorPlan, pageRooms, activeRoomIds, pageNum,
   imageKey, mapComboRoomCounts, mapComboRooms, mapComboRoomConditions, onPhotoClick,
+  spotlightItems = [],
 }: Props) {
   const outerRef  = useRef<HTMLDivElement>(null);
   const keyRefs   = useRef<(HTMLDivElement | null)[]>([]);
@@ -66,6 +68,7 @@ export default function SpotlightMapView({
   const [lines, setLines]                   = useState<LineSpec[]>([]);
   const [badgePositions, setBadgePositions] = useState<Map<string, { x: number; y: number }>>(new Map());
   const [activeBadge, setActiveBadge]       = useState<ActiveBadge | null>(null);
+  const [roomPopout,  setRoomPopout]        = useState<{ room: any; clientX: number; clientY: number } | null>(null);
 
   const measure = useCallback(() => {
     if (!outerRef.current || !fpWrapRef.current) return;
@@ -167,13 +170,20 @@ export default function SpotlightMapView({
 
   useEffect(() => { measure(); }, [measure]);
 
-  // Close condition tooltip on ESC
+  // Close condition tooltip / room popout on ESC
   useEffect(() => {
     if (!activeBadge) return;
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setActiveBadge(null); };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [activeBadge]);
+
+  useEffect(() => {
+    if (!roomPopout) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') setRoomPopout(null); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [roomPopout]);
 
   // Collect badges for each room: [ { color, count, label } ] ordered by imageKey index
   const roomBadgeMap = new Map<string, { color: string; count: number; label: string }[]>();
@@ -299,6 +309,36 @@ export default function SpotlightMapView({
           pageNumber={pageNum}
         />
 
+        {/* ── Transparent room hit zones — click to show items popout ── */}
+        {pageRooms
+          .filter(r => activeRoomIds.has(r.id) && r.map_coordinates)
+          .map(room => {
+            const { x, y, width, height } = room.map_coordinates;
+            const isSelected = roomPopout?.room.id === room.id;
+            return (
+              <div
+                key={`hz-${room.id}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveBadge(null);
+                  setRoomPopout(isSelected ? null : { room, clientX: e.clientX, clientY: e.clientY });
+                }}
+                style={{
+                  position: 'absolute',
+                  left: `${x}%`, top: `${y}%`,
+                  width: `${width}%`, height: `${height}%`,
+                  cursor: 'pointer',
+                  zIndex: 15,
+                  ...(isSelected ? {
+                    outline: '2px solid rgba(99,102,241,0.9)',
+                    backgroundColor: 'rgba(99,102,241,0.18)',
+                  } : {}),
+                }}
+              />
+            );
+          })
+        }
+
         {pageRooms
           .filter(r => activeRoomIds.has(r.id) && r.map_coordinates && roomBadgeMap.has(r.id))
           .flatMap(room => {
@@ -320,6 +360,7 @@ export default function SpotlightMapView({
                   key={key}
                   onClick={(e) => {
                     e.stopPropagation();
+                    setRoomPopout(null);
                     setActiveBadge(prev =>
                       prev?.comboLabel === badge.label && prev?.roomId === room.id
                         ? null
@@ -367,7 +408,6 @@ export default function SpotlightMapView({
       {/* ── Condition breakdown tooltip ── */}
       {activeBadge && typeof document !== 'undefined' && createPortal(
         <>
-          {/* Transparent backdrop to close on click-outside */}
           <div className="fixed inset-0 z-[10002]" onClick={() => setActiveBadge(null)} />
           <ConditionTooltip
             badge={activeBadge}
@@ -378,6 +418,88 @@ export default function SpotlightMapView({
         </>,
         document.body
       )}
+
+      {/* ── Room items popout ── */}
+      {roomPopout && typeof document !== 'undefined' && createPortal(
+        <>
+          <div className="fixed inset-0 z-[10002]" onClick={() => setRoomPopout(null)} />
+          <RoomItemsPopout
+            room={roomPopout.room}
+            clientX={roomPopout.clientX}
+            clientY={roomPopout.clientY}
+            items={spotlightItems.filter(item => item.room_id === roomPopout.room.id)}
+            onClose={() => setRoomPopout(null)}
+          />
+        </>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+function RoomItemsPopout({ room, clientX, clientY, items, onClose }: {
+  room: any;
+  clientX: number;
+  clientY: number;
+  items: any[];
+  onClose: () => void;
+}) {
+  const above = clientY > (typeof window !== 'undefined' ? window.innerHeight / 2 : 400);
+  const left  = Math.min(Math.max(8, clientX - 150), (typeof window !== 'undefined' ? window.innerWidth : 800) - 316);
+
+  return (
+    <div
+      style={{
+        position: 'fixed',
+        left,
+        top: clientY,
+        transform: above ? 'translateY(calc(-100% - 10px))' : 'translateY(10px)',
+        width: 300,
+        maxHeight: 340,
+        zIndex: 10003,
+      }}
+      onClick={e => e.stopPropagation()}
+      className="bg-gray-900 border border-gray-700 shadow-2xl flex flex-col overflow-hidden"
+    >
+      {/* Header */}
+      <div className="flex items-center justify-between pl-3 pr-2 py-2 border-b border-gray-800 shrink-0">
+        <span className="font-semibold text-[12px] text-gray-100 truncate">{room.name}</span>
+        <button onClick={onClose} className="text-gray-600 hover:text-gray-300 transition-colors p-0.5 shrink-0 ml-2">
+          <X size={13} />
+        </button>
+      </div>
+
+      {/* Item list */}
+      <div className="overflow-y-auto custom-scrollbar flex-1">
+        {items.length === 0 ? (
+          <div className="px-3 py-5 text-center">
+            <p className="font-mono text-[10px] text-gray-600 tracking-wider uppercase">No items in spotlight</p>
+          </div>
+        ) : items.map((item, i) => (
+          <div key={item.id ?? i} className="flex items-center gap-2.5 px-3 py-2 border-b border-gray-800/50 last:border-0">
+            {item.photo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={item.photo_url} alt="" className="w-8 h-8 object-cover shrink-0 bg-gray-800" loading="lazy" />
+            ) : (
+              <div className="w-8 h-8 bg-gray-800 border border-gray-700 flex items-center justify-center shrink-0">
+                <Package size={13} className="text-gray-600" />
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold text-gray-100 truncate leading-tight">{item.ItemTypes?.name}</p>
+              {item.attributes?.length > 0 && (
+                <p className="font-mono text-[9px] text-gray-500 truncate mt-0.5">{item.attributes.join(' · ')}</p>
+              )}
+              <div className="flex items-center gap-1.5 mt-0.5">
+                {(item.qty_excellent || 0) > 0 && <span className="font-mono text-[9px] font-bold text-green-400">{item.qty_excellent}E</span>}
+                {(item.qty_good      || 0) > 0 && <span className="font-mono text-[9px] font-bold text-blue-400">{item.qty_good}G</span>}
+                {(item.qty_fair      || 0) > 0 && <span className="font-mono text-[9px] font-bold text-yellow-400">{item.qty_fair}F</span>}
+                {(item.qty_poor      || 0) > 0 && <span className="font-mono text-[9px] font-bold text-red-400">{item.qty_poor}P</span>}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
