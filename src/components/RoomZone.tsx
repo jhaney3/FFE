@@ -435,26 +435,32 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
 
   // Spotlight computation
   const spotlightActive = !!spotlightType;
+
+  const itemMatchesSpotlight = (item: any): boolean => {
+    if (!spotlightType) return true;
+    if (item.ItemTypes?.name !== spotlightType) return false;
+    if (spotlightAttribute) {
+      const combo = [...(item.attributes || [])].sort().join(', ');
+      return combo === spotlightAttribute;
+    }
+    if (spotlightParent) {
+      if (spotlightParent === '(ungrouped)') {
+        return !(item.attributes || []).some((a: string) => tagMeta?.get(`${item.item_type_id}:${a}`));
+      }
+      return (item.attributes || []).includes(spotlightParent);
+    }
+    return true;
+  };
+
   const spotlightCount = spotlightActive
     ? items.reduce((sum, item) => {
-        if (item.ItemTypes?.name !== spotlightType) return sum;
-        if (spotlightAttribute) {
-          // Full combo match (e.g. "Adult, Black") — sort to match ItemTypeFilter's comboKey
-          const combo = [...(item.attributes || [])].sort().join(', ');
-          if (combo !== spotlightAttribute) return sum;
-        } else if (spotlightParent) {
-          if (spotlightParent === '(ungrouped)') {
-            // Match items that have no parent attribute
-            const hasParent = (item.attributes || []).some((a: string) => tagMeta?.get(`${item.item_type_id}:${a}`));
-            if (hasParent) return sum;
-          } else {
-            // Parent-only match — item must have the parent attribute anywhere in its array
-            if (!(item.attributes || []).includes(spotlightParent)) return sum;
-          }
-        }
+        if (!itemMatchesSpotlight(item)) return sum;
         return sum + (item.qty_excellent || 0) + (item.qty_good || 0) + (item.qty_fair || 0) + (item.qty_poor || 0);
       }, 0)
     : 0;
+
+  // In the popout, only show spotlight-matching items when a spotlight is active
+  const popoutItems = spotlightActive ? items.filter(itemMatchesSpotlight) : items;
   const spotlightMatch = spotlightActive && spotlightCount > 0;
   const spotlightDim   = spotlightActive && spotlightCount === 0;
 
@@ -655,7 +661,7 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
 
               {/* Item list */}
               <div className="flex-1 space-y-1.5 overflow-y-auto pr-1 min-h-0 custom-scrollbar">
-                {items.length > 0 ? items.map(item => (
+                {popoutItems.length > 0 ? popoutItems.map(item => (
                   <DraggableItemRow
                     key={item.id}
                     item={item}
@@ -670,7 +676,9 @@ export default function RoomZone({ room, items = [], activeAdmin, mapRef, onDele
                 )) : (
                   <div className="text-center py-6 flex flex-col items-center gap-1.5">
                     <Package size={18} className="text-gray-700" />
-                    <p className="font-mono text-[10px] text-gray-600 tracking-wider uppercase">No items assigned</p>
+                    <p className="font-mono text-[10px] text-gray-600 tracking-wider uppercase">
+                      {spotlightActive ? 'No matching items' : 'No items assigned'}
+                    </p>
                   </div>
                 )}
               </div>
